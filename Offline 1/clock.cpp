@@ -34,9 +34,9 @@ void initialize(){
     int m = ltm->tm_min;
     int s = ltm->tm_sec;
 
-    h = 5;
-    m = 58;
-    s = 55;
+    // h = 5;
+    // m = 58;
+    // s = 55;
 
     sec_theta_deg = -(s*6.0);
     min_theta_deg = -(m*6.0 + s/10.0-90);
