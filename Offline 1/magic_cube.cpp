@@ -13,7 +13,7 @@ GLfloat eyex = 4, eyey = 4, eyez = 4;
 GLfloat centerx = 0, centery = 0, centerz = 0;
 GLfloat upx = 0, upy = 1, upz = 0;
 bool isAxes = true, isCube = false, isPyramid = false;
-
+GLfloat triangleScale = 1;
 /* Draw axes: X in Red, Y in Green and Z in Blue */
 void drawAxes() {
     glLineWidth(3);
@@ -125,11 +125,18 @@ void drawPyramid() {
 
 
 void drawOctHSurface(){
-    glBegin(GL_TRIANGLES);
-        glVertex3f(1,0,0);
-        glVertex3f(0,1,0);
-        glVertex3f(0,0,1);
-    glEnd();
+    glPushMatrix();
+        glTranslatef(sqrt(2.0)/4,sqrt(3)/6,sqrt(2.0)/4);  
+        glScalef(triangleScale, triangleScale,triangleScale);
+        glTranslatef(-sqrt(2.0)/4,-sqrt(3)/6,-sqrt(2.0)/4);  
+         
+        glBegin(GL_TRIANGLES);
+            glVertex3f(1,0,0);
+            glVertex3f(0,1,0);
+            glVertex3f(0,0,1);
+        glEnd();
+
+    glPopMatrix();
 }
 
 void drawHalfOctH(){
@@ -162,6 +169,7 @@ void display() {
               upx,upy,upz);
     // draw
     if (isAxes) drawAxes();
+    // drawOctHSurface();
     drawHalfOctH();
     glPushMatrix();
         glRotatef(90,0,1,0);
@@ -201,6 +209,12 @@ void keyboardListener(unsigned char key, int x, int y) {
     switch (key) {
     // Control eye (location of the eye)
     // control eyex
+    case ',':
+        if(triangleScale>0) triangleScale-=0.05;
+        break;
+    case '.':
+        if(triangleScale<1) triangleScale+=0.05;
+        break;
     case '1':
         eyex += v;
         break;
