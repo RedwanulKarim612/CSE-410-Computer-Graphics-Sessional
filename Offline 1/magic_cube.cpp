@@ -1,5 +1,8 @@
 #include <GL/glut.h>  // GLUT, include glu.h and gl.h
 #include <cmath>
+#include <iostream>
+
+using namespace std;
 
 /* Initialize OpenGL Graphics */
 void initGL() {
@@ -35,101 +38,16 @@ void drawAxes() {
     glEnd();
 }
 
-/* Draw a cube centered at the origin */
-void drawCube() {
-    glBegin(GL_QUADS);                // Begin drawing the color cube with 6 quads
-        // Top face (y = 1.0f)
-        // Define vertices in counter-clockwise (CCW) order with normal pointing out
-        glColor3f(0.0f, 1.0f, 0.0f);     // Green
-        glVertex3f( 1.0f, 1.0f, -1.0f);
-        glVertex3f(-1.0f, 1.0f, -1.0f);
-        glVertex3f(-1.0f, 1.0f,  1.0f);
-        glVertex3f( 1.0f, 1.0f,  1.0f);
-
-        // Bottom face (y = -1.0f)
-        glColor3f(1.0f, 0.5f, 0.0f);     // Orange
-        glVertex3f( 1.0f, -1.0f,  1.0f);
-        glVertex3f(-1.0f, -1.0f,  1.0f);
-        glVertex3f(-1.0f, -1.0f, -1.0f);
-        glVertex3f( 1.0f, -1.0f, -1.0f);
-
-        // Front face  (z = 1.0f)
-        glColor3f(1.0f, 0.0f, 0.0f);     // Red
-        glVertex3f( 1.0f,  1.0f, 1.0f);
-        glVertex3f(-1.0f,  1.0f, 1.0f);
-        glVertex3f(-1.0f, -1.0f, 1.0f);
-        glVertex3f( 1.0f, -1.0f, 1.0f);
-
-        // Back face (z = -1.0f)
-        glColor3f(1.0f, 1.0f, 0.0f);     // Yellow
-        glVertex3f( 1.0f, -1.0f, -1.0f);
-        glVertex3f(-1.0f, -1.0f, -1.0f);
-        glVertex3f(-1.0f,  1.0f, -1.0f);
-        glVertex3f( 1.0f,  1.0f, -1.0f);
-
-        // Left face (x = -1.0f)
-        glColor3f(0.0f, 0.0f, 1.0f);     // Blue
-        glVertex3f(-1.0f,  1.0f,  1.0f);
-        glVertex3f(-1.0f,  1.0f, -1.0f);
-        glVertex3f(-1.0f, -1.0f, -1.0f);
-        glVertex3f(-1.0f, -1.0f,  1.0f);
-
-        // Right face (x = 1.0f)
-        glColor3f(1.0f, 0.0f, 1.0f);     // Magenta
-        glVertex3f(1.0f,  1.0f, -1.0f);
-        glVertex3f(1.0f,  1.0f,  1.0f);
-        glVertex3f(1.0f, -1.0f,  1.0f);
-        glVertex3f(1.0f, -1.0f, -1.0f);
-    glEnd();  // End of drawing color-cube
-}
-
-/* Draw a pyramid centered at the origin */
-void drawPyramid() {
-    glBegin(GL_TRIANGLES);           // Begin drawing the pyramid with 4 triangles
-        // Front
-        glColor3f(1.0f, 0.0f, 0.0f);     // Red
-        glVertex3f( 0.0f, 1.0f, 0.0f);
-        glColor3f(0.0f, 1.0f, 0.0f);     // Green
-        glVertex3f(-1.0f, -1.0f, 1.0f);
-        glColor3f(0.0f, 0.0f, 1.0f);     // Blue
-        glVertex3f(1.0f, -1.0f, 1.0f);
-
-        // Right
-        glColor3f(1.0f, 0.0f, 0.0f);     // Red
-        glVertex3f(0.0f, 1.0f, 0.0f);
-        glColor3f(0.0f, 0.0f, 1.0f);     // Blue
-        glVertex3f(1.0f, -1.0f, 1.0f);
-        glColor3f(0.0f, 1.0f, 0.0f);     // Green
-        glVertex3f(1.0f, -1.0f, -1.0f);
-
-        // Back
-        glColor3f(1.0f, 0.0f, 0.0f);     // Red
-        glVertex3f(0.0f, 1.0f, 0.0f);
-        glColor3f(0.0f, 1.0f, 0.0f);     // Green
-        glVertex3f(1.0f, -1.0f, -1.0f);
-        glColor3f(0.0f, 0.0f, 1.0f);     // Blue
-        glVertex3f(-1.0f, -1.0f, -1.0f);
-
-        // Left
-        glColor3f(1.0f,0.0f,0.0f);       // Red
-        glVertex3f( 0.0f, 1.0f, 0.0f);
-        glColor3f(0.0f,0.0f,1.0f);       // Blue
-        glVertex3f(-1.0f,-1.0f,-1.0f);
-        glColor3f(0.0f,1.0f,0.0f);       // Green
-        glVertex3f(-1.0f,-1.0f, 1.0f);
-    glEnd();   // Done drawing the pyramid
-}
-
-/*  Handler for window-repaint event. Call back when the window first appears and
-    whenever the window needs to be re-painted. */
-
-
 void drawOctHSurface(){
     glPushMatrix();
-        glTranslatef(sqrt(2.0)/4,sqrt(3)/6,sqrt(2.0)/4);  
-        glScalef(triangleScale, triangleScale,triangleScale);
-        glTranslatef(-sqrt(2.0)/4,-sqrt(3)/6,-sqrt(2.0)/4);  
+        // glTranslatef(sqrt(2.0)/4,sqrt(3)/6,sqrt(2.0)/4);  
+        // glScalef(triangleScale, triangleScale,triangleScale);
+        // glTranslatef(-sqrt(2.0)/4,-sqrt(3)/6,-sqrt(2.0)/4);  
          
+
+        glTranslatef(1.0/3,1.0/3,1.0/3);  
+        glScalef(triangleScale, triangleScale,triangleScale);
+        glTranslatef(-1.0/3,-1.0/3,-1.0/3);  
         glBegin(GL_TRIANGLES);
             glVertex3f(1,0,0);
             glVertex3f(0,1,0);
@@ -154,6 +72,116 @@ void drawHalfOctH(){
         drawOctHSurface();
     glPopMatrix();
 }
+
+void drawOctahedron(){
+    drawHalfOctH();
+    glPushMatrix();
+        glRotatef(270,0,1,0);
+        glRotatef(180,1,0,1);
+        drawHalfOctH();
+    glPopMatrix();
+}
+
+void drawCylinderUtil(double height, double radius, int segments) {
+    double tempx = radius, tempy = 0;
+    double currx, curry;
+    glColor3d(1,0,1);
+    glBegin(GL_QUADS);
+        for (int i = 1; i <= segments/360.0*72; i++) {
+            double theta = i * 2.0 * M_PI / segments;
+            currx = radius * cos(theta);
+            curry = radius * sin(theta);
+
+            glVertex3f(currx, curry, height/2);
+            glVertex3f(currx, curry, -height/2);
+
+            glVertex3f(tempx, tempy, -height/2);
+            glVertex3f(tempx, tempy, height/2);
+
+            tempx = currx;
+            tempy = curry;
+        }
+    glEnd();
+}
+
+
+void drawCylinder(){
+    float thetta = acos(-1.0/3.0)/2.0;
+    cout << thetta << endl;
+    GLfloat d = (1-triangleScale)/sqrt(2);
+    GLfloat radius = d*sin(thetta);
+    cout << radius << endl;
+    GLfloat len = sqrt(2);
+    glPushMatrix();
+        glTranslatef(0.5,0,0.5);
+        glRotatef(-45,0,1,0);
+
+        // glScalef((1-triangleScale),  (1-triangleScale), triangleScale);
+        
+        // glColor3f(1,0,1);
+        // for(float i = -len*triangleScale/2;i<=len*triangleScale/2;i+=0.01){
+        //     glPushMatrix();
+        //         glLineWidth(1);
+        //         glTranslatef(-d,0,0);
+        //         glBegin(GL_LINE_STRIP);
+        //         GLfloat a = M_PI-acos(-1.0/3);
+        //         for(float theta = -a/2; theta < a/2; theta+=0.01){
+        //             glVertex3f(radius*cos(theta), radius*sin(theta), i);
+        //         }
+        //         glEnd();
+        //     glPopMatrix();
+        // }
+        glPushMatrix();
+        glTranslatef(-d,0,0);
+
+        glRotatef(-36, 0, 0, 1);
+        drawCylinderUtil(len*triangleScale, radius, 100);
+        glPopMatrix();
+    glPopMatrix();
+}
+
+void drawAllCylinders(){
+    drawCylinder();
+    glPushMatrix();
+        glRotatef(90,0,1,0);
+        drawCylinder();
+    
+        glRotatef(90,0,1,0);
+        drawCylinder();
+    
+        glRotatef(90,0,1,0);
+        drawCylinder();
+    glPopMatrix();
+    glPushMatrix();
+        glRotatef(90,1,0,0);
+        drawCylinder();
+        glRotatef(90,0,1,0);
+        drawCylinder();
+        glRotatef(90,0,1,0);
+        drawCylinder();
+        glRotatef(90,0,1,0);
+        drawCylinder();
+    glPopMatrix();
+    glPushMatrix();
+        glRotatef(90,0,0,1);
+        drawCylinder();
+        glRotatef(90,0,1,0);
+        drawCylinder();
+        glRotatef(90,0,1,0);
+        drawCylinder();
+        glRotatef(90,0,1,0);
+        drawCylinder();
+    glPopMatrix();
+}
+
+void drawCentroid(){
+    glPointSize(10);
+    glColor3d(1,1,1);
+    glBegin(GL_POINTS);
+        glVertex3f(0.3,0.3,0.3);
+    glEnd();
+}
+
 void display() {
     // glClear(GL_COLOR_BUFFER_BIT);            // Clear the color buffer (background)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -168,14 +196,12 @@ void display() {
               centerx,centery,centerz,
               upx,upy,upz);
     // draw
+    glScalef(1.5,1.5,1.5);
     if (isAxes) drawAxes();
-    // drawOctHSurface();
-    drawHalfOctH();
-    glPushMatrix();
-        glRotatef(90,0,1,0);
-        glRotatef(180,1,0,1);
-        drawHalfOctH();
-    glPopMatrix();
+
+    glColor3d(0,0,1);
+    drawOctahedron();
+    drawAllCylinders();
     glutSwapBuffers();  // Render now
 }
 
@@ -210,7 +236,7 @@ void keyboardListener(unsigned char key, int x, int y) {
     // Control eye (location of the eye)
     // control eyex
     case ',':
-        if(triangleScale>0) triangleScale-=0.05;
+        if(triangleScale>=0) triangleScale-=0.05;
         break;
     case '.':
         if(triangleScale<1) triangleScale+=0.05;
