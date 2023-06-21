@@ -1,6 +1,7 @@
 #include <GL/glut.h>  // GLUT, include glu.h and gl.h
 #include <cmath>
 #include <iostream>
+#include <vector>
 
 using namespace std;
 
@@ -59,16 +60,16 @@ void drawOctHSurface(){
 
 void drawHalfOctH(){
     glPushMatrix();
-        glColor3d(1,0,0);
+        glColor3f(0.52, 0.16, 0.6);
         drawOctHSurface();
         glRotatef(90,0,1,0);
-        glColor3d(0,0,1);
+        glColor3f(1, 0.57, 0.01);
         drawOctHSurface();
         glRotatef(90,0,1,0);
-        glColor3d(0,1,0);
+        glColor3f(0.52, 0.16, 0.6);
         drawOctHSurface();
         glRotatef(90,0,1,0);
-        glColor3d(1,1,0);
+        glColor3f(1, 0.57, 0.01);
         drawOctHSurface();
     glPopMatrix();
 }
@@ -85,7 +86,7 @@ void drawOctahedron(){
 void drawCylinderUtil(double height, double radius, int segments) {
     double tempx = radius, tempy = 0;
     double currx, curry;
-    glColor3d(1,0,1);
+    
     glBegin(GL_QUADS);
         for (int i = 1; i <= segments/360.0*72; i++) {
             double theta = i * 2.0 * M_PI / segments;
@@ -107,30 +108,12 @@ void drawCylinderUtil(double height, double radius, int segments) {
 
 void drawCylinder(){
     float thetta = acos(-1.0/3.0)/2.0;
-    cout << thetta << endl;
     GLfloat d = (1-triangleScale)/sqrt(2);
     GLfloat radius = d*sin(thetta);
-    cout << radius << endl;
     GLfloat len = sqrt(2);
     glPushMatrix();
         glTranslatef(0.5,0,0.5);
         glRotatef(-45,0,1,0);
-
-        // glScalef((1-triangleScale),  (1-triangleScale), triangleScale);
-        
-        // glColor3f(1,0,1);
-        // for(float i = -len*triangleScale/2;i<=len*triangleScale/2;i+=0.01){
-        //     glPushMatrix();
-        //         glLineWidth(1);
-        //         glTranslatef(-d,0,0);
-        //         glBegin(GL_LINE_STRIP);
-        //         GLfloat a = M_PI-acos(-1.0/3);
-        //         for(float theta = -a/2; theta < a/2; theta+=0.01){
-        //             glVertex3f(radius*cos(theta), radius*sin(theta), i);
-        //         }
-        //         glEnd();
-        //     glPopMatrix();
-        // }
         glPushMatrix();
         glTranslatef(-d,0,0);
 
@@ -140,30 +123,8 @@ void drawCylinder(){
     glPopMatrix();
 }
 
-void drawAllCylinders(){
-    drawCylinder();
+void drawFourCylindersOnPlane(){
     glPushMatrix();
-        glRotatef(90,0,1,0);
-        drawCylinder();
-    
-        glRotatef(90,0,1,0);
-        drawCylinder();
-    
-        glRotatef(90,0,1,0);
-        drawCylinder();
-    glPopMatrix();
-    glPushMatrix();
-        glRotatef(90,1,0,0);
-        drawCylinder();
-        glRotatef(90,0,1,0);
-        drawCylinder();
-        glRotatef(90,0,1,0);
-        drawCylinder();
-        glRotatef(90,0,1,0);
-        drawCylinder();
-    glPopMatrix();
-    glPushMatrix();
-        glRotatef(90,0,0,1);
         drawCylinder();
         glRotatef(90,0,1,0);
         drawCylinder();
@@ -173,6 +134,114 @@ void drawAllCylinders(){
         drawCylinder();
     glPopMatrix();
 }
+
+void drawAllCylinders(){
+    glColor3f(0.13, 0.56, 0.35);
+    drawFourCylindersOnPlane();
+    glPushMatrix();
+        glRotatef(90,1,0,0);
+        drawFourCylindersOnPlane();
+    glPopMatrix();
+    glPushMatrix();
+        glRotatef(90,0,0,1);
+        drawFourCylindersOnPlane();
+    glPopMatrix();
+}
+
+void buildUnitPositiveX(int subdivision)
+{
+    const float DEG2RAD = acos(-1) / 180.0f;
+
+    vector<float> vertices;
+    float n1[3];        // normal of longitudinal plane rotating along Y-axis
+    float n2[3];        // normal of latitudinal plane rotating along Z-axis
+    float v[3];         // direction vector intersecting 2 planes, n1 x n2
+    float a1;           // longitudinal angle along Y-axis
+    float a2;           // latitudinal angle along Z-axis
+
+    // compute the number of vertices per row, 2^n + 1
+    int pointsPerRow = (int)pow(2, subdivision) + 1;
+
+    // rotate latitudinal plane from 45 to -45 degrees along Z-axis (top-to-bottom)
+    for(unsigned int i = 0; i < pointsPerRow; ++i)
+    {
+        // normal for latitudinal plane
+        // if latitude angle is 0, then normal vector of latitude plane is n2=(0,1,0)
+        // therefore, it is rotating (0,1,0) vector by latitude angle a2
+        a2 = DEG2RAD * (45.0f - 90.0f * i / (pointsPerRow - 1));
+        n2[0] = -sin(a2);
+        n2[1] = cos(a2);
+        n2[2] = 0;
+
+        // rotate longitudinal plane from -45 to 45 along Y-axis (left-to-right)
+        for(unsigned int j = 0; j < pointsPerRow; ++j)
+        {
+            // normal for longitudinal plane
+            // if longitude angle is 0, then normal vector of longitude is n1=(0,0,-1)
+            // therefore, it is rotating (0,0,-1) vector by longitude angle a1
+            a1 = DEG2RAD * (-45.0f + 90.0f * j / (pointsPerRow - 1));
+            n1[0] = -sin(a1);
+            n1[1] = 0;
+            n1[2] = -cos(a1);
+
+            // find direction vector of intersected line, n1 x n2
+            v[0] = n1[1] * n2[2] - n1[2] * n2[1];
+            v[1] = n1[2] * n2[0] - n1[0] * n2[2];
+            v[2] = n1[0] * n2[1] - n1[1] * n2[0];
+
+            // normalize direction vector
+            float scale = 1 / sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+            v[0] *= scale;
+            v[1] *= scale;
+            v[2] *= scale;
+
+            // add a vertex into array
+            vertices.push_back(v[0]);
+            vertices.push_back(v[1]);
+            vertices.push_back(v[2]);
+        }
+    }
+    for(int i=0;i<(vertices.size()/3)-pointsPerRow - 1;i+=1){
+        glPointSize(5);
+        glBegin(GL_QUADS);
+            glVertex3f(vertices[3*i],vertices[3*i+1],vertices[3*i+2]);
+            glVertex3f(vertices[3*i + 3],vertices[3*i+4],vertices[3*i+5]);
+            glVertex3f(vertices[3*(i + pointsPerRow) + 3],vertices[3*(i + pointsPerRow) + 4],vertices[3*(i + pointsPerRow) + 5]);
+            glVertex3f(vertices[3*(i + pointsPerRow)],vertices[3*(i + pointsPerRow) + 1],vertices[3*(i + pointsPerRow) + 2]);   
+        glEnd();
+    }
+}
+
+void drawSphereSegment(){
+    float thetta = acos(-1.0/3.0)/2.0;
+    GLfloat d = (1.0-triangleScale)/sqrt(2.0);
+    GLfloat radius = d*sin(thetta);
+    glPushMatrix();
+        glTranslatef(1-sqrt(2)*d,0,0);
+        glScalef(radius,radius,radius);
+        buildUnitPositiveX(4);
+    glPopMatrix();
+}
+
+void drawTwoSphereSegments(){
+    drawSphereSegment();
+    glRotatef(180,0,1,0);
+    drawSphereSegment();
+}
+
+void drawAllSphereSegments(){
+    glPushMatrix();
+        glColor3d(1,0,0);
+        drawTwoSphereSegments();
+        glColor3d(0,0,1);
+        glRotatef(90,0,1,0);
+        drawTwoSphereSegments();
+        glRotatef(90,0,0,1);
+        glColor3d(0,1,0);
+        drawTwoSphereSegments();
+    glPopMatrix();
+}
+
 
 void drawCentroid(){
     glPointSize(10);
@@ -199,9 +268,9 @@ void display() {
     glScalef(1.5,1.5,1.5);
     if (isAxes) drawAxes();
 
-    glColor3d(0,0,1);
     drawOctahedron();
     drawAllCylinders();
+    drawAllSphereSegments();
     glutSwapBuffers();  // Render now
 }
 
