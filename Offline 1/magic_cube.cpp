@@ -5,6 +5,16 @@
 
 using namespace std;
 
+struct point {
+    GLfloat x, y, z;
+};
+// Global variables
+struct point pos;   // position of the eye
+struct point l;     // look/forward direction
+struct point r;     // right direction
+struct point u;     // up direction
+
+float angle = 0.0;
 /* Initialize OpenGL Graphics */
 void initGL() {
     // Set "clearing" or background color
@@ -18,26 +28,28 @@ GLfloat centerx = 0, centery = 0, centerz = 0;
 GLfloat upx = 0, upy = 1, upz = 0;
 bool isAxes = true, isCube = false, isPyramid = false;
 GLfloat triangleScale = 1;
+float rotation_step = 5.0;
 /* Draw axes: X in Red, Y in Green and Z in Blue */
 void drawAxes() {
     glLineWidth(3);
     glBegin(GL_LINES);
         glColor3f(1,0,0);   // Red
         // X axis
-        glVertex3f(-1,0,0);
+        glVertex3f(0,0,0);
         glVertex3f(1,0,0);
 
         glColor3f(0,1,0);   // Green
         // Y axis
-        glVertex3f(0,-1,0);
+        glVertex3f(0,0,0);
         glVertex3f(0,1,0);
 
         glColor3f(0,0,1);   // Blue
         // Z axis
-        glVertex3f(0,0,-1);
+        glVertex3f(0,0,0);
         glVertex3f(0,0,1);
     glEnd();
 }
+
 
 void drawOctHSurface(){
     glPushMatrix();
@@ -261,13 +273,16 @@ void display() {
     // gluLookAt(0,0,0, 0,0,-100, 0,1,0);
 
     // control viewing (or camera)
-    gluLookAt(eyex,eyey,eyez,
-              centerx,centery,centerz,
-              upx,upy,upz);
+    // gluLookAt(eyex,eyey,eyez,
+    //           centerx,centery,centerz,
+    //           upx,upy,upz);
+    gluLookAt(pos.x,pos.y,pos.z,
+              pos.x+l.x,pos.y+l.y,pos.z+l.z,
+              u.x,u.y,u.z);
     // draw
-    glScalef(1.5,1.5,1.5);
-    if (isAxes) drawAxes();
-
+    glScalef(2,2,2);
+    // if (isAxes) drawAxes();
+    glRotatef(angle,0,1,0);
     drawOctahedron();
     drawAllCylinders();
     drawAllSphereSegments();
@@ -299,116 +314,188 @@ void reshapeListener(GLsizei width, GLsizei height) {  // GLsizei for non-negati
 }
 
 /* Callback handler for normal-key event */
-void keyboardListener(unsigned char key, int x, int y) {
-    float v = 0.1;
-    switch (key) {
-    // Control eye (location of the eye)
-    // control eyex
-    case ',':
-        if(triangleScale>=0) triangleScale-=0.05;
-        break;
-    case '.':
-        if(triangleScale<1) triangleScale+=0.05;
-        break;
-    case '1':
-        eyex += v;
-        break;
-    case '2':
-        eyex -= v;
-        break;
-    // control eyey
-    case '3':
-        eyey += v;
-        break;
-    case '4':
-        eyey -= v;
-        break;
-    // control eyez
-    case '5':
-        eyez += v;
-        break;
-    case '6':
-        eyez -= v;
-        break;
 
-    // Control center (location where the eye is looking at)
-    // control centerx
-    case 'q':
-        centerx += v;
-        break;
-    case 'w':
-        centerx -= v;
-        break;
-    // control centery
-    case 'e':
-        centery += v;
-        break;
-    case 'r':
-        centery -= v;
-        break;
-    // control centerz
-    case 't':
-        centerz += v;
-        break;
-    case 'y':
-        centerz -= v;
-        break;
+void keyboardListener(unsigned char key, int xx,int yy){
+    double rate = 0.01;
+	switch(key){
+        case ',':
+            triangleScale = max(0.0,triangleScale - 0.05);
+            break;
+        case '.':
+            triangleScale = min(1.0,triangleScale + 0.05);
+            break;
+		case '1':
+			r.x = r.x*cos(-rate)+l.x*sin(-rate);
+			r.y = r.y*cos(-rate)+l.y*sin(-rate);
+			r.z = r.z*cos(-rate)+l.z*sin(-rate);
 
-    // Control what is shown
-    case 'a':
-        isAxes = !isAxes;   // show/hide Axes if 'a' is pressed
-        break;
-    case 'c':
-        isCube = !isCube;   // show/hide Cube if 'c' is pressed
-        break;
-    case 'p':
-        isPyramid = !isPyramid; // show/hide Pyramid if 'p' is pressed
-        break;
+			l.x = l.x*cos(-rate)-r.x*sin(-rate);
+			l.y = l.y*cos(-rate)-r.y*sin(-rate);
+			l.z = l.z*cos(-rate)-r.z*sin(-rate);
+			break;
 
-    // Control exit
-    case 27:    // ESC key
-        exit(0);    // Exit window
-        break;
-    }
-    glutPostRedisplay();    // Post a paint request to activate display()
+        case '2':
+
+			r.x = r.x*cos(rate)+l.x*sin(rate);
+			r.y = r.y*cos(rate)+l.y*sin(rate);
+			r.z = r.z*cos(rate)+l.z*sin(rate);
+
+			l.x = l.x*cos(rate)-r.x*sin(rate);
+			l.y = l.y*cos(rate)-r.y*sin(rate);
+			l.z = l.z*cos(rate)-r.z*sin(rate);
+            
+			break;
+
+        case '3':
+			l.x = l.x*cos(rate)+u.x*sin(rate);
+			l.y = l.y*cos(rate)+u.y*sin(rate);
+			l.z = l.z*cos(rate)+u.z*sin(rate);
+
+			u.x = u.x*cos(rate)-l.x*sin(rate);
+			u.y = u.y*cos(rate)-l.y*sin(rate);
+			u.z = u.z*cos(rate)-l.z*sin(rate);
+			break;
+
+        case '4':
+			l.x = l.x*cos(-rate)+u.x*sin(-rate);
+			l.y = l.y*cos(-rate)+u.y*sin(-rate);
+			l.z = l.z*cos(-rate)+u.z*sin(-rate);
+
+			u.x = u.x*cos(-rate)-l.x*sin(-rate);
+			u.y = u.y*cos(-rate)-l.y*sin(-rate);
+			u.z = u.z*cos(-rate)-l.z*sin(-rate);
+			break;
+
+        case '5':
+
+			u.x = u.x*cos(-rate)+r.x*sin(-rate);
+			u.y = u.y*cos(-rate)+r.y*sin(-rate);
+			u.z = u.z*cos(-rate)+r.z*sin(-rate);
+
+			r.x = r.x*cos(-rate)-u.x*sin(-rate);
+			r.y = r.y*cos(-rate)-u.y*sin(-rate);
+			r.z = r.z*cos(-rate)-u.z*sin(-rate);
+            
+			break;
+
+        case '6':
+
+			u.x = u.x*cos(rate)+r.x*sin(rate);
+			u.y = u.y*cos(rate)+r.y*sin(rate);
+			u.z = u.z*cos(rate)+r.z*sin(rate);
+
+			r.x = r.x*cos(rate)-u.x*sin(rate);
+			r.y = r.y*cos(rate)-u.y*sin(rate);
+			r.z = r.z*cos(rate)-u.z*sin(rate);
+			break;
+
+        case 'a':
+            angle-=rotation_step;
+            if(angle<0) angle += 360;
+            break;
+        case 'd':
+            angle+=rotation_step;
+            if(angle>=360) angle -= 360;
+            break;
+		default:
+			break;
+	}
+	glutPostRedisplay();
 }
 
 /* Callback handler for special-key event */
-void specialKeyListener(int key, int x,int y) {
-    double v = 0.25;
-    double lx = centerx - eyex;
-    double lz = centerz - eyez;
-    double s;
-    switch (key) {
-    case GLUT_KEY_LEFT:
-        eyex += v * (upy*lz);
-        eyez += v * (-lx*upy);
-        s = sqrt(eyex*eyex + eyez*eyez) / (4 * sqrt(2));
-        eyex /= s;
-        eyez /= s;
-        break;
-    case GLUT_KEY_RIGHT:
-        eyex += v * (-upy*lz);
-        eyez += v * (lx*upy);
-        s = sqrt(eyex*eyex + eyez*eyez) / (4 * sqrt(2));
-        eyex /= s;
-        eyez /= s;
-        break;
-    case GLUT_KEY_UP:
-        eyey += v;
-        break;
-    case GLUT_KEY_DOWN:
-        eyey -= v;
-        break;
+// void specialKeyListener(int key, int x,int y) {
+//     double v = 0.25;
+//     double lx = centerx - eyex;
+//     double lz = centerz - eyez;
+//     double s;
+//     switch (key) {
+//     case GLUT_KEY_LEFT:
+//         eyex += v * (upy*lz);
+//         eyez += v * (-lx*upy);
+//         s = sqrt(eyex*eyex + eyez*eyez) / (4 * sqrt(2));
+//         eyex /= s;
+//         eyez /= s;
+//         break;
+//     case GLUT_KEY_RIGHT:
+//         eyex += v * (-upy*lz);
+//         eyez += v * (lx*upy);
+//         s = sqrt(eyex*eyex + eyez*eyez) / (4 * sqrt(2));
+//         eyex /= s;
+//         eyez /= s;
+//         break;
+//     case GLUT_KEY_UP:
+//         eyey += v;
+//         break;
+//     case GLUT_KEY_DOWN:
+//         eyey -= v;
+//         break;
     
-    default:
-        return;
-    }
-    glutPostRedisplay();    // Post a paint request to activate display()
-}
+//     default:
+//         return;
+//     }
+//     glutPostRedisplay();    // Post a paint request to activate display()
+// }
 
+void specialKeyListener(int key, int x,int y)
+{
+	switch(key){
+		case GLUT_KEY_UP:		//down arrow key
+			pos.x+=l.x;
+			pos.y+=l.y;
+			pos.z+=l.z;
+			break;
+		case GLUT_KEY_DOWN:		// up arrow key
+			pos.x-=l.x;
+			pos.y-=l.y;
+			pos.z-=l.z;
+			break;
+
+		case GLUT_KEY_RIGHT:
+			pos.x+=r.x;
+			pos.y+=r.y;
+			pos.z+=r.z;
+			break;
+		case GLUT_KEY_LEFT :
+			pos.x-=r.x;
+			pos.y-=r.y;
+			pos.z-=r.z;
+			break;
+
+		case GLUT_KEY_PAGE_UP:
+		    pos.x+=u.x;
+			pos.y+=u.y;
+			pos.z+=u.z;
+			break;
+		case GLUT_KEY_PAGE_DOWN:
+            pos.x-=u.x;
+			pos.y-=u.y;
+			pos.z-=u.z;
+			break;
+
+		case GLUT_KEY_INSERT:
+			break;
+
+		case GLUT_KEY_HOME:
+			break;
+		case GLUT_KEY_END:
+			break;
+
+		default:
+			break;
+	}
+	glutPostRedisplay();
+}
 /* Main function: GLUT runs as a console application starting at main()  */
 int main(int argc, char** argv) {
+    pos.x=5.0;pos.y=5.0;pos.z=5.0;
+
+    l.x=-0.5;l.y=-0.5;l.z=-0.5;
+    u.x=-0.5;u.y=1;u.z=-0.5;
+    r.x = u.y * l.z - u.z * l.y;
+    r.y = u.z * l.x - u.x * l.z;
+    r.z = u.x * l.y - u.y * l.x;
+
     glutInit(&argc, argv);                      // Initialize GLUT
     glutInitWindowSize(640, 640);               // Set the window's initial width & height
     glutInitWindowPosition(50, 50);             // Position the window's initial top-left corner
