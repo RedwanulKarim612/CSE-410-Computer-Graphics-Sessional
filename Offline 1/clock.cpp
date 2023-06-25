@@ -179,7 +179,7 @@ void drawMinHand(){
     glBegin(GL_POLYGON);
         glVertex2f(0,-0.004);
         glVertex2f(0.65*radius, -0.035*radius);
-        glVertex2f(0.9*radius, 0);
+        glVertex2f(0.95*radius, 0);
         glVertex2f(0.65*radius, 0.035*radius);
         glVertex2f(0,0.004);
     glEnd();
