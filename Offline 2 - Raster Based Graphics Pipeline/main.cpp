@@ -1,5 +1,5 @@
 #include<bits/stdc++.h>
-
+#include "bitmap_image.hpp"
 using namespace std;
 
 const double PI = acos(-1);
@@ -46,6 +46,54 @@ public:
         output << point.x << " " << point.y << " " << point.z << endl;
         return output;
     }
+};
+
+static unsigned long int g_seed = 1;
+inline int random_rgb(){
+    g_seed = (214013 * g_seed + 2531011);
+    return (g_seed >> 16) & 0x7FFF;
+}
+class Triangle{
+public:
+    Point points[3];
+    int color_RGB[3];
+    Triangle(Point p1, Point p2, Point p3){
+        points[0] = p1;
+        points[1] = p2;
+        points[2] = p3;
+        for(int i=0;i<3;i++)
+            color_RGB[i] = random_rgb() % 256;
+    }
+    Triangle(){
+        for(int i=0;i<3;i++)
+            color_RGB[i] = random_rgb() % 256;
+    }
+
+    Point getP1(){
+        return points[0];
+    }
+    Point getP2(){
+        return points[1];
+    }
+    Point getP3(){
+        return points[2];
+    }
+
+    friend istream& operator>>(istream &input, Triangle &triangle){
+        input >> triangle.points[0] >> triangle.points[1] >> triangle.points[2];
+        return input;
+    }
+
+    friend ostream& operator<<(ostream &output, Triangle &triangle){
+        output << triangle.points[0] << triangle.points[1] << triangle.points[2] << endl;
+        // output << "color:\n";
+        // for(int i=0;i<3;i++)
+        //     output << triangle.color_RGB[i] << " ";
+        // output << endl;
+        return output;
+    }
+
+
 };
 
 class Vector{
@@ -294,7 +342,7 @@ int main(int argc, char *argv[]){
     fin >> eye >> look >> up;
     double fovY, aspectRatio, near, far;
     fin >> fovY >> aspectRatio >> near >> far;
-    int triangles = 0;
+    int triangle_count = 0;
     
     // stage 1: Modeling Transformation
 
@@ -306,7 +354,7 @@ int main(int argc, char *argv[]){
     while(true){
         fin >> cmd;
         if(cmd=="triangle"){
-            triangles++;
+            triangle_count++;
             Point p1,p2,p3;
             fin >> p1 >> p2 >> p3;
             p1 = transformPoint(current_transformation_matrix, p1);
@@ -362,7 +410,7 @@ int main(int argc, char *argv[]){
     Matrix view_transformation_matrix = view_rotation_matrix * view_translation_matrix;
     fin.open("stage1.txt");
     fout.open("stage2.txt");
-    for(int i=1;i<=triangles;i++){
+    for(int i=1;i<=triangle_count;i++){
         Point p1,p2,p3;
         fin >> p1 >> p2 >> p3;
         p1 = transformPoint(view_transformation_matrix, p1);
@@ -382,7 +430,7 @@ int main(int argc, char *argv[]){
     double s = near * tan(fovX*PI/360.0);
     Matrix projection_transformation_matrix(4);
     projection_transformation_matrix.createProjectionTransformationMatrix(near, far, t, s);
-    for(int i=0;i<triangles;i++){
+    for(int i=0;i<triangle_count;i++){
         Point p1, p2, p3;
         fin >> p1 >> p2 >> p3;
         p1 = transformPoint(projection_transformation_matrix, p1);
@@ -392,5 +440,116 @@ int main(int argc, char *argv[]){
     }
     fin.close();
     fout.close();
+
+    // stage 4: clipping and z-buffering
+
+    int screen_width, screen_height;
+    ifstream configFile("config.txt");
+    configFile >> screen_width >> screen_height;
+    fin.open("stage3.txt");
+    fout.open("z_buffer.txt");
+    vector<Triangle> triangles;
+    for(int i=0;i<triangle_count;i++){
+        Triangle triangle;
+        fin >> triangle;
+        triangles.push_back(triangle);
+    }
+    double right_limit = 1;
+    double left_limit = -1;
+    double top_limit = 1;
+    double bottom_limit = -1;
+
+    double dx = (right_limit - left_limit) / screen_width;
+    double dy = (top_limit - bottom_limit) / screen_height;
+    double top_y = top_limit - dy/2;
+    double left_x = left_limit + dx/2;
+    double z_buffer[screen_height][screen_width];
+    double max_z = 1;
+    double min_z = -1;
+    for(int i=0;i<screen_height;i++){
+        for(int j=0;j<screen_width;j++){
+            z_buffer[i][j] = max_z;
+        }
+    }
+    bitmap_image image(screen_width, screen_height);
+    for(int i=0;i<screen_height;i++){
+        for(int j=0;j<screen_width;j++){
+            image.set_pixel(j, i, 0, 0, 0);
+        }
+    }
+
+    for(int t_i=0;t_i<triangles.size();t_i++){
+        // cout << triangles[t_i];
+        double mx_y = max(triangles[t_i].getP1().getY(), 
+                        max(triangles[t_i].getP2().getY(), 
+                            triangles[t_i].getP3().getY()));
+        double mn_y = min(triangles[t_i].getP1().getY(),
+                        min(triangles[t_i].getP2().getY(), 
+                            triangles[t_i].getP3().getY()));
+        double top_scan_y = min(top_y, mx_y);
+        double bottom_scan_y = max(-top_y, mn_y);
+        int top_scan_y_index = round(abs(top_scan_y - top_y) / dy);
+        int bottom_scan_y_index = round(abs(bottom_scan_y - top_y) / dy);
+        // cout << mx_y << " " << mn_y << endl;
+        // cout << top_scan_y_index << " " << bottom_scan_y_index << endl;
+        for(int y_i=top_scan_y_index; y_i<=bottom_scan_y_index; y_i++){
+            vector<double>x_intersections, z_intersections;
+            double ys = top_y - y_i*dy;
+            for(int j=0;j<3;j++){
+                int k = (j+1)%3;
+                // cout << triangles[i].points[j];
+                // cout << triangles[i].points[k];
+                if(triangles[t_i].points[j].getY() == triangles[t_i].points[k].getY()) continue;
+                if(triangles[t_i].points[j].getY() < ys && triangles[t_i].points[k].getY() < ys) continue;
+                if(triangles[t_i].points[j].getY() > ys && triangles[t_i].points[k].getY() > ys) continue;
+                double xs = triangles[t_i].points[j].getX() + (ys - triangles[t_i].points[j].getY()) * 
+                            (triangles[t_i].points[k].getX() - triangles[t_i].points[j].getX()) / 
+                            (triangles[t_i].points[k].getY() - triangles[t_i].points[j].getY());
+                double zs = triangles[t_i].points[j].getZ() + (ys - triangles[t_i].points[j].getY()) * 
+                            (triangles[t_i].points[k].getZ() - triangles[t_i].points[j].getZ()) / 
+                            (triangles[t_i].points[k].getY() - triangles[t_i].points[j].getY());
+                // cout << "SSSSSSS " << xs << endl;
+                if(xs >= -left_x) xs = -left_x;
+                else if(xs <= left_x) xs = left_x;
+                x_intersections.push_back(xs);  
+                z_intersections.push_back(zs);           
+            }
+            // cout << x_intersections.size() << endl;
+            if(x_intersections.size()!=2) continue;
+            int right_scan_x_index = round((max(x_intersections[0], x_intersections[1]) - left_x) / dx);
+            int left_scan_x_index = round((min(x_intersections[0], x_intersections[1]) - left_x) / dx);
+            for(int x_i = left_scan_x_index; x_i<=right_scan_x_index;x_i++){
+                double xa = left_x + x_i*dx;    
+                double za = z_intersections[0] + (xa - x_intersections[0]) * 
+                            (z_intersections[1] - z_intersections[0]) / 
+                            (x_intersections[1] - x_intersections[0]);
+                if(za < min_z) continue;
+                if(z_buffer[y_i][x_i] > za){
+                    // if(z_buffer[y_i][x_i]!=max_z && y_i==249)cout << t_i << " " << x_i << " " << z_buffer[y_i][x_i] << " " << za << endl;
+                    z_buffer[y_i][x_i] = za;
+                    image.set_pixel(x_i, y_i, triangles[t_i].color_RGB[0], triangles[t_i].color_RGB[1], triangles[t_i].color_RGB[2]);
+                }
+            }
+        }
+        // string suffix = argv[2];
+        // string file_name = "out-" + suffix + "-" + to_string(t_i) + ".bmp";
+        // image.save_image(file_name);
+    }
+    fout << setw(6) << fixed << setprecision(6);
+
+    for(int i=0;i<screen_height;i++){
+        for(int j=0;j<screen_width;j++){
+            if(z_buffer[i][j] < max_z){
+                fout << z_buffer[i][j] << "\t";
+            }
+        }
+        fout << endl;
+    }
+    
+
+    string suffix = argv[2];
+    string file_name = "out-" + suffix + ".bmp";
+    image.save_image(file_name);
+
     return 0;
 }
