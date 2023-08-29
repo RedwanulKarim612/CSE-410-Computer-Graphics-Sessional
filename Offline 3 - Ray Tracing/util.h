@@ -193,6 +193,111 @@ public:
     }
 };
 
+class Matrix{
+public:
+    int rows, columns;
+    vector<vector<double> >mat;
+    Matrix(){
+        this->rows = 3;
+        this->columns = 3;
+        this->mat.resize(rows);
+        for(int i=0;i<rows;i++){
+            this->mat[i].resize(columns);
+        }
+    }
+    Matrix(int rows, int columns){
+        this->rows = rows;
+        this->columns = columns;
+        this->mat.resize(rows);
+        for(int i=0;i<rows;i++){
+            this->mat[i].resize(columns);
+        }
+    }
+    void setVal(int row, int column, double val){
+        this->mat[row][column] = val;
+    }
+    double determinant(){
+        double r1 = mat[0][0]*(mat[1][1]*mat[2][2] - mat[1][2]*mat[2][1]);
+        double r2 = mat[0][1]*(mat[1][0]*mat[2][2] - mat[1][2]*mat[2][0]);
+        double r3 = mat[0][2]*(mat[1][0]*mat[2][1] - mat[1][1]*mat[2][0]);
+        double det = r1-r2+r3;
+        return det;
+    }
+};
+
+class Triangle{
+public:
+    Point points[3];
+    double color[3];
+    Triangle(){
+        this->points[0] = Point();
+        this->points[1] = Point();
+        this->points[2] = Point();
+    }
+
+    Triangle(Point points[3]){
+        this->points[0] = points[0];
+        this->points[1] = points[1];
+        this->points[2] = points[2];
+    }
+
+    Triangle(Point a, Point b, Point c, double color[]){
+        this->points[0] = a;
+        this->points[1] = b;
+        this->points[2] = c;
+        this->color[0] = color[0];
+        this->color[1] = color[1];
+        this->color[2] = color[2];
+    }
+
+    void draw(){
+        // cout << "drawing triangle\n";
+        // cout << "points: " << points[0] << points[1] << points[2] << endl;
+        glColor3f(color[0], color[1], color[2]);
+        glPushMatrix();
+            glBegin(GL_TRIANGLES);
+                glVertex3f(points[0].x, points[0].y, points[0].z);
+                glVertex3f(points[1].x, points[1].y, points[1].z);
+                glVertex3f(points[2].x, points[2].y, points[2].z);
+            glEnd();
+        glPopMatrix();
+    }
+
+    double findIntersection(Ray ray){
+        Matrix A(3,3);
+        A.setVal(0, 0, points[0].x-points[1].x);
+        A.setVal(1, 0, points[0].y-points[1].y);
+        A.setVal(2, 0, points[0].z-points[1].z);
+        A.setVal(0, 1, points[0].x-points[2].x);
+        A.setVal(1, 1, points[0].y-points[2].y);
+        A.setVal(2, 1, points[0].z-points[2].z);
+        A.setVal(0, 2, ray.direction.x);
+        A.setVal(1, 2, ray.direction.y);
+        A.setVal(2, 2, ray.direction.z);
+        Matrix betaM = A;
+        betaM.setVal(0,0,points[0].x-ray.origin.x);
+        betaM.setVal(1,0,points[0].y-ray.origin.y);
+        betaM.setVal(2,0,points[0].z-ray.origin.z);
+        double beta = betaM.determinant()/A.determinant();
+        if(beta<0.0 || beta>1.0) return -1.0;
+        Matrix gammaM = A;
+        gammaM.setVal(0,1,points[0].x-ray.origin.x);
+        gammaM.setVal(1,1,points[0].y-ray.origin.y);
+        gammaM.setVal(2,1,points[0].z-ray.origin.z);
+        double gamma = gammaM.determinant()/A.determinant();
+        if(gamma<0.0 || gamma>1.0-beta) return -1.0;
+        Matrix tM = A;        
+        
+        tM.setVal(0,2,points[0].x-ray.origin.x);
+        tM.setVal(1,2,points[0].y-ray.origin.y);
+        tM.setVal(2,2,points[0].z-ray.origin.z);
+
+        double t = tM.determinant()/A.determinant();
+        if(t<0.0) return -1.0;
+        return t;
+    }
+};
+
 class Sphere: public Object{
 public:
     Point center;
@@ -206,9 +311,9 @@ public:
         this->radius = radius;
     }
     virtual void draw(){
-        cout << "drawing sphere\n";
-        cout << "center: " << center << endl;
-        cout << "radius: " << radius << endl;
+        // cout << "drawing sphere\n";
+        // cout << "center: " << center << endl;
+        // cout << "radius: " << radius << endl;
         glColor3f(color[0], color[1], color[2]);
         glPushMatrix();
             glTranslatef(center.x, center.y, center.z);
@@ -228,26 +333,6 @@ public:
             return tp-sqrt(tpps);
         }
         else return tp+sqrt(tpps);
-        // double b = 2*(ray.direction.dotProduct(originVector));
-        // double c = originVector.dotProduct(originVector) - radius*radius;
-        // cout << b*b-4*a*c << endl;
-        // double d = sqrt(b*b-4*a*c);
-        
-        // double t1 = (-b + d)/2.0;
-        // double t2 = (-b - d)/2.0;
-        // cout << t1 << " " << t2 << endl;
-        // if(t1 < 0 && t2 < 0){
-        //     return -1;
-        // }
-        // else if(t1 < 0){
-        //     return t2;
-        // }
-        // else if(t2 < 0){
-        //     return t1;
-        // }
-        // else{
-        //     return min(t1, t2);
-        // }
     }
 };
 
@@ -273,39 +358,73 @@ public:
         cout << "width: " << width << endl;
         cout << "height: " << height << endl;
         glColor3f(color[0], color[1], color[2]);
+        Point a,b,c,d,h;
+        a = Point(lowest_point.x + width/2, lowest_point.y, lowest_point.z + width/2);
+        b = Point(lowest_point.x + width/2, lowest_point.y, lowest_point.z - width/2);
+        c = Point(lowest_point.x - width/2, lowest_point.y, lowest_point.z - width/2);
+        d = Point(lowest_point.x - width/2, lowest_point.y, lowest_point.z + width/2);
+        h = Point(lowest_point.x, lowest_point.y + height, lowest_point.z);
+        vector<Triangle>triangles;
+        triangles.push_back(Triangle(a,b,h, this->color));
+        triangles.push_back(Triangle(b,c,h, this->color));
+        triangles.push_back(Triangle(c,d,h, this->color));
+        triangles.push_back(Triangle(d,a,h, this->color));
+        triangles.push_back(Triangle(a,b,c, this->color));
+        triangles.push_back(Triangle(a,c,d, this->color));
+        for(int i=0;i<triangles.size();i++)
+            triangles[i].draw();    
         glPushMatrix();
-            glTranslatef(lowest_point.x, lowest_point.y, lowest_point.z);
+            // glTranslatef(lowest_point.x, lowest_point.y, lowest_point.z);
             glBegin(GL_QUADS);
                 glVertex3f(lowest_point.x + width/2, lowest_point.y, lowest_point.z + width/2);
                 glVertex3f(lowest_point.x + width/2, lowest_point.y, lowest_point.z - width/2);
                 glVertex3f(lowest_point.x - width/2, lowest_point.y, lowest_point.z - width/2);
                 glVertex3f(lowest_point.x - width/2, lowest_point.y, lowest_point.z + width/2);
             glEnd();
-            glBegin(GL_TRIANGLES);
-                glVertex3f(lowest_point.x + width/2, lowest_point.y, lowest_point.z + width/2);
-                glVertex3f(lowest_point.x + width/2, lowest_point.y, lowest_point.z - width/2);
-                glVertex3f(lowest_point.x, lowest_point.y + height, lowest_point.z);
-            glEnd();
-            glBegin(GL_TRIANGLES);
-                glVertex3f(lowest_point.x + width/2, lowest_point.y, lowest_point.z - width/2);
-                glVertex3f(lowest_point.x - width/2, lowest_point.y, lowest_point.z - width/2);
-                glVertex3f(lowest_point.x, lowest_point.y + height, lowest_point.z);
-            glEnd();
-            glBegin(GL_TRIANGLES);
-                glVertex3f(lowest_point.x - width/2, lowest_point.y, lowest_point.z - width/2);
-                glVertex3f(lowest_point.x - width/2, lowest_point.y, lowest_point.z + width/2);
-                glVertex3f(lowest_point.x, lowest_point.y + height, lowest_point.z);
-            glEnd();
-            glBegin(GL_TRIANGLES);
-                glVertex3f(lowest_point.x - width/2, lowest_point.y, lowest_point.z + width/2);
-                glVertex3f(lowest_point.x + width/2, lowest_point.y, lowest_point.z + width/2);
-                glVertex3f(lowest_point.x, lowest_point.y + height, lowest_point.z);
+            // glBegin(GL_TRIANGLES);
+            //     glVertex3f(lowest_point.x + width/2, lowest_point.y, lowest_point.z + width/2);
+            //     glVertex3f(lowest_point.x + width/2, lowest_point.y, lowest_point.z - width/2);
+            //     glVertex3f(lowest_point.x, lowest_point.y + height, lowest_point.z);
+            // glEnd();
+            // glBegin(GL_TRIANGLES);
+            //     glVertex3f(lowest_point.x + width/2, lowest_point.y, lowest_point.z - width/2);
+            //     glVertex3f(lowest_point.x - width/2, lowest_point.y, lowest_point.z - width/2);
+            //     glVertex3f(lowest_point.x, lowest_point.y + height, lowest_point.z);
+            // glEnd();
+            // glBegin(GL_TRIANGLES);
+            //     glVertex3f(lowest_point.x - width/2, lowest_point.y, lowest_point.z - width/2);
+            //     glVertex3f(lowest_point.x - width/2, lowest_point.y, lowest_point.z + width/2);
+            //     glVertex3f(lowest_point.x, lowest_point.y + height, lowest_point.z);
+            // glEnd();
+            // glBegin(GL_TRIANGLES);
+            //     glVertex3f(lowest_point.x - width/2, lowest_point.y, lowest_point.z + width/2);
+            //     glVertex3f(lowest_point.x + width/2, lowest_point.y, lowest_point.z + width/2);
+            //     glVertex3f(lowest_point.x, lowest_point.y + height, lowest_point.z);
             glEnd();
         glPopMatrix();
     }
 
     virtual double findIntersection(Ray ray){
-        return 0;
+        Point a,b,c,d,h;
+        a = Point(lowest_point.x + width/2, lowest_point.y, lowest_point.z + width/2);
+        b = Point(lowest_point.x + width/2, lowest_point.y, lowest_point.z - width/2);
+        c = Point(lowest_point.x - width/2, lowest_point.y, lowest_point.z - width/2);
+        d = Point(lowest_point.x - width/2, lowest_point.y, lowest_point.z + width/2);
+        h = Point(lowest_point.x, lowest_point.y + height, lowest_point.z);
+        vector<Triangle>triangles;
+        triangles.push_back(Triangle(a,b,h, this->color));
+        triangles.push_back(Triangle(b,c,h, this->color));
+        triangles.push_back(Triangle(c,d,h, this->color));
+        triangles.push_back(Triangle(d,a,h, this->color));
+        double min_t = -1.0;
+        int in = 0;
+        for(int i=0;i<triangles.size();i++){
+            double t = triangles[i].findIntersection(ray);
+            if(t<0.0) continue;
+            if(min_t<0.0 || t<min_t) {min_t = t; in = i;}
+        }
+        if(min_t<0.0) return -1.0;
+        return min_t;
     }
     
 };
@@ -326,13 +445,46 @@ public:
     }
 
     void draw(){
-        cout << "drawing cube\n";
-        cout << "bottom left: " << bottom_left << endl;
-        cout << "side: " << side << endl;
+        // cout << "drawing cube\n";
+        // cout << "bottom left: " << bottom_left << endl;
+        // cout << "side: " << side << endl;
         glColor3f(color[0], color[1], color[2]);
         glPushMatrix();
             glTranslatef(bottom_left.x, bottom_left.y, bottom_left.z);
             glutSolidCube(side);
         glPopMatrix();
+    }
+
+    virtual double findIntersection(Ray ray){
+        Point bottom_left = this->bottom_left;
+        Point bottom_right = Point(bottom_left.x + side, bottom_left.y, bottom_left.z);
+        Point top_left = Point(bottom_left.x, bottom_left.y + side, bottom_left.z);
+        Point top_right = Point(bottom_left.x + side, bottom_left.y + side, bottom_left.z);
+        Point front_bottom_left = Point(bottom_left.x, bottom_left.y, bottom_left.z + side);
+        Point front_bottom_right = Point(bottom_left.x + side, bottom_left.y, bottom_left.z + side);
+        Point front_top_left = Point(bottom_left.x, bottom_left.y + side, bottom_left.z + side);
+        Point front_top_right = Point(bottom_left.x + side, bottom_left.y + side, bottom_left.z + side);
+        vector<Triangle>triangles;
+        triangles.push_back(Triangle(bottom_left, bottom_right, top_right, this->color));
+        triangles.push_back(Triangle(bottom_left, top_left, top_right, this->color));
+        triangles.push_back(Triangle(bottom_left, bottom_right, front_bottom_right, this->color));
+        triangles.push_back(Triangle(bottom_left, front_bottom_left, front_bottom_right, this->color));
+        triangles.push_back(Triangle(bottom_left, front_bottom_left, top_left, this->color));
+        triangles.push_back(Triangle(front_bottom_left, front_top_left, top_left, this->color));
+        triangles.push_back(Triangle(front_bottom_left, front_bottom_right, front_top_right, this->color));
+        triangles.push_back(Triangle(front_bottom_left, front_top_left, front_top_right, this->color));
+        triangles.push_back(Triangle(front_bottom_right, bottom_right, top_right, this->color));
+        triangles.push_back(Triangle(front_bottom_right, front_top_right, top_right, this->color));
+        triangles.push_back(Triangle(front_top_left, front_top_right, top_left, this->color));
+        triangles.push_back(Triangle(front_top_right, top_right, top_left, this->color));
+        double min_t = -1.0;
+        int in = 0;
+        for(int i=0;i<triangles.size();i++){
+            double t = triangles[i].findIntersection(ray);
+            if(t<0.0) continue;
+            if(min_t<0.0 || t<min_t) {min_t = t; in = i;}
+        }
+        if(min_t<0.0) return -1.0;
+        return min_t;
     }
 };

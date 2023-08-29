@@ -60,17 +60,17 @@ void drawAxes() {
         glColor3f(1,0,0);   // Red
         // X axis
         glVertex3f(0,0,0);
-        glVertex3f(1,0,0);
+        glVertex3f(1000,0,0);
 
         glColor3f(0,1,0);   // Green
         // Y axis
         glVertex3f(0,0,0);
-        glVertex3f(0,1,0);
+        glVertex3f(0,1000,0);
 
         glColor3f(0,0,1);   // Blue
         // Z axis
         glVertex3f(0,0,0);
-        glVertex3f(0,0,1);
+        glVertex3f(0,0,1000);
     glEnd();
 }
 
@@ -112,8 +112,8 @@ void display() {
               pos.x+l.x,pos.y+l.y,pos.z+l.z,
               u.x,u.y,u.z);
     glMatrixMode(GL_MODELVIEW);
-    // drawAxes();
-    drawCheckerBoard();
+    drawAxes();
+    // drawCheckerBoard();
     // draw all objects
     cout << objects.size() << endl;
     for(int i=0;i<objects.size();i++){
@@ -148,7 +148,7 @@ void reshapeListener(GLsizei width, GLsizei height) {  // GLsizei for non-negati
 
 
 void keyboardListener(unsigned char key, int xx,int yy){
-    double rate = 0.01;
+    double rate = 0.05;
 	switch(key){
 
 		case '1':
@@ -265,7 +265,7 @@ void specialKeyListener(int key, int x,int y)
 
 
 int main(int argc, char** argv){
-    pos.x=150;pos.y=40;pos.z=0;
+    pos.x=0;pos.y=40;pos.z=0;
     u = Vector(0,1,0);
     r = Vector(1/sqrt(2),0,-1/sqrt(2));
     l = Vector(-1/sqrt(2),0,-1/sqrt(2));
@@ -298,8 +298,6 @@ int main(int argc, char** argv){
             desFile >> ambientCoeff >> diffuseCoeff >> specularCoeff >> reflectionCoeff >> shininess;
             Object *o = new Sphere(center, radius, color, ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff, shininess);
             objects.push_back(o);
-            cout << "sphere\n";
-            cout << radius << " " << center << endl;
         }
         else if(type=="pyramid"){
             Point lowest_point;
@@ -312,7 +310,7 @@ int main(int argc, char** argv){
             desFile >> color[0] >> color[1] >> color[2];
             desFile >> ambientCoeff >> diffuseCoeff >> specularCoeff >> reflectionCoeff >> shininess;
             Object *o = new Pyramid(lowest_point, width, height, color, ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff, shininess);
-            // objects.push_back(o);
+            objects.push_back(o);
         }
         else if(type=="cube"){
             Point bottom_lower_left;
@@ -325,7 +323,8 @@ int main(int argc, char** argv){
             desFile >> color[0] >> color[1] >> color[2];
             desFile >> ambientCoeff >> diffuseCoeff >> specularCoeff >> reflectionCoeff >> shininess;
             Object *o = new Cube(bottom_lower_left, side, color, ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff, shininess);
-            // objects.push_back(o);
+            objects.push_back(o);
+            cout << "cube\n";
         }
     }
     glutInit(&argc, argv);                      // Initialize GLUT
