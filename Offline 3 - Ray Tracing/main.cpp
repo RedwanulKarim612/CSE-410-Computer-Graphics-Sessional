@@ -37,7 +37,7 @@ void captureImage(){
             Ray ray(pos, rayDirection);
             for(int k=0;k<objects.size();k++){
                 double color[3] = {1.0, 0.0, 0.0};
-                double t = objects[k]->intersection(ray, color, 0, objects, lights);
+                double t = objects[k]->intersection(ray, color, recursionLevel, objects, lights);
                 // double t = objects[k]->findIntersection(ray);
                 if(t<0.0) continue;
                 if(t<min_t || min_t<0.0){

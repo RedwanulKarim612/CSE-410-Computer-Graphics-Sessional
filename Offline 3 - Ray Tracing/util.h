@@ -266,7 +266,7 @@ public:
             for(int j=0;j<3;j++){
                 color[j] += this->color[j]*diffuseCoeff*lambert*lights[i]->color[j];
             }
-            // lightVector = -lightVector;
+            lightVector = -lightVector;
             Vector reflectionVector = lightVector - normal*(2.0*lightVector.dotProduct(normal));
             reflectionVector.normalize();
             phong = -reflectionVector.dotProduct(ray.direction);
@@ -279,6 +279,27 @@ public:
         for(int i=0;i<3;i++){
             color[i] = min(max(color[i],0.0), 1.0);
         }
+        if(depth==0) return t;
+        Vector normal = getNormal(intersectionPoint, -ray.direction);
+        Vector reflectionVector = -ray.direction - normal*(2.0*ray.direction.dotProduct(normal));
+        reflectionVector.normalize();
+        Ray reflectedRay = Ray(reflectionVector*0.001+intersectionPoint, reflectionVector);
+        double t2 = -1, t_min = -1, obj_in = -1;
+        for(int i=0;i<objects.size();i++){
+            t2 = objects[i]->intersection(reflectedRay, color, 0, objects, lights);
+            if(t2<0.0) continue;
+            if(t_min<0.0 || t2<t_min) {
+                t_min = t2;
+                obj_in = i;
+            }
+        }
+        if(t2<0.0) return t;
+        double color2[3] = {0,0,0};
+        t2 = objects[obj_in]->intersection(reflectedRay, color2, depth-1, objects, lights);
+        for(int i=0;i<3;i++){
+            color[i] += color2[i]*reflectionCoeff;
+        }
+
         return t;
     }
 
