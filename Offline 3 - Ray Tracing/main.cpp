@@ -10,6 +10,7 @@ Point pos;
 double angle = 0.0;
 double rotation_step = 5.0;
 vector<Object *> objects;
+vector<Light *> lights;
 double near, far, fovX, fovY, aspectRatio;
 double screenHeight, screenWidth, planeDistance;
 double recursionLevel, pixels;
@@ -35,13 +36,17 @@ void captureImage(){
             rayDirection.normalize();
             Ray ray(pos, rayDirection);
             for(int k=0;k<objects.size();k++){
-                double t = objects[k]->findIntersection(ray);
+                double color[3] = {1.0, 0.0, 0.0};
+                double t = objects[k]->intersection(ray, color, 0, objects, lights);
+                // double t = objects[k]->findIntersection(ray);
                 if(t<0.0) continue;
                 if(t<min_t || min_t<0.0){
-                    image.set_pixel(j, i, objects[k]->color[0]*255, objects[k]->color[1]*255, objects[k]->color[2]*255);
+                    image.set_pixel(j, i, color[0]*255, color[1]*255, color[2]*255);
                     min_t = t;
+                    // cout << i << " " << j << endl;
                 }
             }
+            // cout << "min_t: " << min_t << endl;
         }
     }
     image.save_image("out.bmp");
@@ -113,11 +118,13 @@ void display() {
               u.x,u.y,u.z);
     glMatrixMode(GL_MODELVIEW);
     drawAxes();
-    // drawCheckerBoard();
-    // draw all objects
-    cout << objects.size() << endl;
+    drawCheckerBoard();
+    // cout << objects.size() << endl;
     for(int i=0;i<objects.size();i++){
         objects[i]->draw();
+    }
+    for(int i=0;i<lights.size();i++){
+        lights[i]->draw();
     }
     glutSwapBuffers();  // Render now
 }
@@ -211,7 +218,9 @@ void keyboardListener(unsigned char key, int xx,int yy){
 			r.z = r.z*cos(-rate)-u.z*sin(-rate);
 			break;
         case '0':
+            cout << "capturing image....\n";
             captureImage();
+            cout << "image captured\n";
             break;
 		default:
 			break;
@@ -265,12 +274,11 @@ void specialKeyListener(int key, int x,int y)
 
 
 int main(int argc, char** argv){
-    pos.x=0;pos.y=40;pos.z=0;
+    pos.x=-150;pos.y=40;pos.z=0;
     u = Vector(0,1,0);
-    r = Vector(1/sqrt(2),0,-1/sqrt(2));
-    l = Vector(-1/sqrt(2),0,-1/sqrt(2));
+    r = Vector(0,0,1);
+    l = Vector(1,0,0);
 
-                                    // Our own OpenGL initialization
     ifstream desFile("description.txt");
     int numberOfObjects;
     desFile >> near >> far >> fovY >> aspectRatio;
@@ -283,6 +291,8 @@ int main(int argc, char** argv){
     screenWidth = 2*near*tan(fovX*M_PI/360.0);
     screenHeight = 2*near*tan(fovY*M_PI/360.0);
     image = bitmap_image(pixels, pixels);
+    double color[3];
+    // Floor floor(checkerBoardWidth, color, checkerBoardAmbientCoeff, checkerBoardDiffuseCoeff, 0.0, checkerBoardReflectionCoeff);
     while(numberOfObjects--){
         string type;
         desFile >> type;
@@ -292,7 +302,7 @@ int main(int argc, char** argv){
             double color[3];
             double ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff;
             double shininess;
-            desFile >> center.x >> center.y >> center.z;
+            desFile >> center.x >> center.z >> center.y;
             desFile >> radius;
             desFile >> color[0] >> color[1] >> color[2];
             desFile >> ambientCoeff >> diffuseCoeff >> specularCoeff >> reflectionCoeff >> shininess;
@@ -305,10 +315,13 @@ int main(int argc, char** argv){
             double color[3];
             double ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff;
             double shininess;
-            desFile >> lowest_point.x >> lowest_point.y >> lowest_point.z;
+            desFile >> lowest_point.x >> lowest_point.z >> lowest_point.y;
+            
             desFile >> width >> height;
             desFile >> color[0] >> color[1] >> color[2];
             desFile >> ambientCoeff >> diffuseCoeff >> specularCoeff >> reflectionCoeff >> shininess;
+            lowest_point.x = lowest_point.x - width/2;
+            lowest_point.z = lowest_point.z - width/2;
             Object *o = new Pyramid(lowest_point, width, height, color, ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff, shininess);
             objects.push_back(o);
         }
@@ -318,14 +331,24 @@ int main(int argc, char** argv){
             double color[3];
             double ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff;
             double shininess;
-            desFile >> bottom_lower_left.x >> bottom_lower_left.y >> bottom_lower_left.z;
+            desFile >> bottom_lower_left.x >> bottom_lower_left.z >> bottom_lower_left.y;
             desFile >> side;
             desFile >> color[0] >> color[1] >> color[2];
             desFile >> ambientCoeff >> diffuseCoeff >> specularCoeff >> reflectionCoeff >> shininess;
             Object *o = new Cube(bottom_lower_left, side, color, ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff, shininess);
             objects.push_back(o);
-            cout << "cube\n";
+            // cout << "cube\n";
         }
+    }
+    int noOfLights;
+    desFile >> noOfLights;
+    while(noOfLights--){
+        Point position;
+        double fallOff;
+        desFile >> position.x >> position.z >> position.y;
+        desFile >> fallOff;
+        Light *l = new Light(position, fallOff);
+        lights.push_back(l);
     }
     glutInit(&argc, argv);                      // Initialize GLUT
     glutInitWindowSize(pixels, pixels);               // Set the window's initial width & height

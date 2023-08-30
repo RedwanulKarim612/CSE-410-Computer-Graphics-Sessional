@@ -3,7 +3,7 @@
 using namespace std;
 
 class Vector;
-
+class Light;
 class Point{
 public:
     double x, y, z;
@@ -37,7 +37,12 @@ public:
         return result;
     }
 
-    
+    double distance(Point other){
+        double dx = this->x - other.x;
+        double dy = this->y - other.y;
+        double dz = this->z - other.z;
+        return sqrt(dx*dx + dy*dy + dz*dz);
+    }
 
     friend istream& operator>>(istream &input, Point &point){
         input >> point.x >> point.y >> point.z;
@@ -95,7 +100,7 @@ public:
         return output;
     }
 
-    Vector operator*(Vector &other){
+    Vector operator*(Vector other){
         Vector result;
         result.x = this->y*other.z - this->z*other.y;
         result.y = this->z*other.x - this->x*other.z;
@@ -159,6 +164,41 @@ public:
     }
 };
 
+
+class Light{
+public:
+    Point position;
+    double fallOff;
+    double color[3];
+    Light(){
+        this->position = Point();
+        this->fallOff = 0;
+        for(int i=0;i<3;i++){
+            this->color[i] = 1.0;
+        }   
+    }
+    Light(Point position, double fallOff){
+        this->position = position;
+        this->fallOff = fallOff;
+        for(int i=0;i<3;i++){
+            this->color[i] = 1.0;
+        }
+        // color[0]=0.0;
+    }
+
+    void draw(){
+        // cout << "drawing light\n";
+        // cout << "position: " << position << endl;
+        // cout << "fallOff: " << fallOff << endl;
+        glColor3f(color[0], color[1], color[2]);
+        glPushMatrix();
+            glTranslatef(position.x, position.y, position.z);
+            glutSolidSphere(2.5, 30, 30);
+        glPopMatrix();
+    }    
+};
+
+
 class Object{
 public:
     double color[3];
@@ -190,6 +230,60 @@ public:
 
     virtual double findIntersection(Ray ray){
         return 0.0;
+    }
+
+    virtual double intersection(Ray ray, double (&color)[3], int depth, vector<Object*>objects, vector<Light *>lights){
+        double t = findIntersection(ray);
+        double lambert = 0, phong = 0;
+        if(t<0.0) return -1.0;
+        // cout << t << endl;
+        Point intersectionPoint = ray.direction*t + ray.origin;
+        for(int i=0;i<3;i++){
+            color[i] = this->color[i]*ambientCoeff;
+        }    
+        for(int i=0;i<lights.size();i++){
+            Vector lightVector = Vector(intersectionPoint, lights[i]->position);
+            lightVector.normalize();
+            Ray shadowRay(lightVector*0.1 + intersectionPoint, lightVector);
+            double tToLight = (lights[i]->position.x - intersectionPoint.x)/shadowRay.direction.x;
+            bool inShadow = false;
+            for(int j=0;j<objects.size();j++){
+                double tObj = objects[j]->findIntersection(shadowRay);
+                if(tObj<tToLight && tObj>0.0){
+                    // cout << "in shadow\n";
+                    // cout << "tObj: " << tObj << endl;
+                    inShadow = true;
+                    break;
+                }
+            }
+            // if(inShadow)cout << "in shadow " << inShadow << endl;
+            if(inShadow) continue;
+            double distanceFromLight = intersectionPoint.distance(lights[i]->position);
+            Vector normal = getNormal(intersectionPoint, lightVector);
+            normal.normalize();
+            lambert = lightVector.dotProduct(normal)*pow(2.718281828, - distanceFromLight*distanceFromLight*lights[i]->fallOff);
+            if(lambert<0.0) lambert = 0.0;
+            for(int j=0;j<3;j++){
+                color[j] += this->color[j]*diffuseCoeff*lambert*lights[i]->color[j];
+            }
+            // lightVector = -lightVector;
+            Vector reflectionVector = lightVector - normal*(2.0*lightVector.dotProduct(normal));
+            reflectionVector.normalize();
+            phong = -reflectionVector.dotProduct(ray.direction);
+            if(phong<0.0) phong = 0.0;
+            phong = pow(phong, shininess);
+            for(int j=0;j<3;j++){
+                color[j] += this->color[j]*specularCoeff*phong*lights[i]->color[j];
+            }
+        }
+        for(int i=0;i<3;i++){
+            color[i] = min(max(color[i],0.0), 1.0);
+        }
+        return t;
+    }
+
+    virtual Vector getNormal(Point point, Vector lightVector){
+        return Vector();
     }
 };
 
@@ -296,6 +390,26 @@ public:
         if(t<0.0) return -1.0;
         return t;
     }
+
+    bool contains(Point point){
+        Vector ac = Vector(points[0], points[2]);
+        Vector ab = Vector(points[0], points[1]);
+        Vector normal = ac*ab;
+        normal.normalize();
+        Vector p0 = Vector(points[0]);
+        double D = -normal.dotProduct(p0);
+        Vector p = Vector(points[0], point);
+        double t = normal.dotProduct(p) + D;
+        return t>0.0;
+    }
+
+    Vector getNormal(Point point, Vector lightVector){
+        Vector normal = Vector(points[0], points[1])*Vector(points[0], points[2]);
+        normal.normalize();
+        if(normal.dotProduct(lightVector)<0.0) normal = -normal;
+        return normal;
+    }
+
 };
 
 class Sphere: public Object{
@@ -334,12 +448,19 @@ public:
         }
         else return tp+sqrt(tpps);
     }
+
+    virtual Vector getNormal(Point point, Vector lightVector){
+        Vector normal = Vector(center, point);
+        normal.normalize();
+        return normal;
+    }
 };
 
 class Pyramid: public Object{
 public:
     Point lowest_point;
     double width, height;
+    vector<Triangle>triangles;
     Pyramid(){
         this->lowest_point = Point();
         this->width = 0;
@@ -350,27 +471,27 @@ public:
         this->lowest_point = lowest_point;
         this->width = width;
         this->height = height;
-    }
-
-    void draw(){
-        cout << "drawing pyramid\n";
-        cout << "lowest point: " << lowest_point << endl;
-        cout << "width: " << width << endl;
-        cout << "height: " << height << endl;
-        glColor3f(color[0], color[1], color[2]);
         Point a,b,c,d,h;
         a = Point(lowest_point.x + width/2, lowest_point.y, lowest_point.z + width/2);
         b = Point(lowest_point.x + width/2, lowest_point.y, lowest_point.z - width/2);
         c = Point(lowest_point.x - width/2, lowest_point.y, lowest_point.z - width/2);
         d = Point(lowest_point.x - width/2, lowest_point.y, lowest_point.z + width/2);
         h = Point(lowest_point.x, lowest_point.y + height, lowest_point.z);
-        vector<Triangle>triangles;
         triangles.push_back(Triangle(a,b,h, this->color));
         triangles.push_back(Triangle(b,c,h, this->color));
         triangles.push_back(Triangle(c,d,h, this->color));
         triangles.push_back(Triangle(d,a,h, this->color));
         triangles.push_back(Triangle(a,b,c, this->color));
         triangles.push_back(Triangle(a,c,d, this->color));
+    }
+
+    void draw(){
+        // cout << "drawing pyramid\n";
+        // cout << "lowest point: " << lowest_point << endl;
+        // cout << "width: " << width << endl;
+        // cout << "height: " << height << endl;
+        glColor3f(color[0], color[1], color[2]);
+        
         for(int i=0;i<triangles.size();i++)
             triangles[i].draw();    
         glPushMatrix();
@@ -405,17 +526,6 @@ public:
     }
 
     virtual double findIntersection(Ray ray){
-        Point a,b,c,d,h;
-        a = Point(lowest_point.x + width/2, lowest_point.y, lowest_point.z + width/2);
-        b = Point(lowest_point.x + width/2, lowest_point.y, lowest_point.z - width/2);
-        c = Point(lowest_point.x - width/2, lowest_point.y, lowest_point.z - width/2);
-        d = Point(lowest_point.x - width/2, lowest_point.y, lowest_point.z + width/2);
-        h = Point(lowest_point.x, lowest_point.y + height, lowest_point.z);
-        vector<Triangle>triangles;
-        triangles.push_back(Triangle(a,b,h, this->color));
-        triangles.push_back(Triangle(b,c,h, this->color));
-        triangles.push_back(Triangle(c,d,h, this->color));
-        triangles.push_back(Triangle(d,a,h, this->color));
         double min_t = -1.0;
         int in = 0;
         for(int i=0;i<triangles.size();i++){
@@ -426,6 +536,15 @@ public:
         if(min_t<0.0) return -1.0;
         return min_t;
     }
+
+    virtual Vector getNormal(Point point, Vector lightVector){
+        for(int i=0;i<triangles.size();i++){
+            if(triangles[i].contains(point)){
+                return triangles[i].getNormal(point, lightVector);
+            }
+        }
+        return Vector();
+    }
     
 };
 
@@ -433,30 +552,16 @@ class Cube: public Object{
 public:
     Point bottom_left;
     double side;
-
+    vector<Triangle>triangles;
     Cube(){
         this->bottom_left = Point();
         this->side = 0;
+        triangles.resize(12);
     }
 
     Cube(Point bottom_left, double side, double color[3], double ambientCoeff, double diffuseCoeff, double specularCoeff, double reflectionCoeff, double shininess): Object(color, ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff, shininess){
         this->bottom_left = bottom_left;
         this->side = side;
-    }
-
-    void draw(){
-        // cout << "drawing cube\n";
-        // cout << "bottom left: " << bottom_left << endl;
-        // cout << "side: " << side << endl;
-        glColor3f(color[0], color[1], color[2]);
-        glPushMatrix();
-            glTranslatef(bottom_left.x, bottom_left.y, bottom_left.z);
-            glutSolidCube(side);
-        glPopMatrix();
-    }
-
-    virtual double findIntersection(Ray ray){
-        Point bottom_left = this->bottom_left;
         Point bottom_right = Point(bottom_left.x + side, bottom_left.y, bottom_left.z);
         Point top_left = Point(bottom_left.x, bottom_left.y + side, bottom_left.z);
         Point top_right = Point(bottom_left.x + side, bottom_left.y + side, bottom_left.z);
@@ -464,7 +569,6 @@ public:
         Point front_bottom_right = Point(bottom_left.x + side, bottom_left.y, bottom_left.z + side);
         Point front_top_left = Point(bottom_left.x, bottom_left.y + side, bottom_left.z + side);
         Point front_top_right = Point(bottom_left.x + side, bottom_left.y + side, bottom_left.z + side);
-        vector<Triangle>triangles;
         triangles.push_back(Triangle(bottom_left, bottom_right, top_right, this->color));
         triangles.push_back(Triangle(bottom_left, top_left, top_right, this->color));
         triangles.push_back(Triangle(bottom_left, bottom_right, front_bottom_right, this->color));
@@ -477,6 +581,20 @@ public:
         triangles.push_back(Triangle(front_bottom_right, front_top_right, top_right, this->color));
         triangles.push_back(Triangle(front_top_left, front_top_right, top_left, this->color));
         triangles.push_back(Triangle(front_top_right, top_right, top_left, this->color));
+    }
+
+    void draw(){
+        // cout << "drawing cube\n";
+        // cout << "bottom left: " << bottom_left << endl;
+        // cout << "side: " << side << endl;
+        glColor3f(color[0], color[1], color[2]);
+        glPushMatrix();
+            glTranslatef(bottom_left.x+this->side/2.0, bottom_left.y+this->side/2.0, bottom_left.z+this->side/2.0);
+            glutSolidCube(side);
+        glPopMatrix();
+    }
+
+    virtual double findIntersection(Ray ray){
         double min_t = -1.0;
         int in = 0;
         for(int i=0;i<triangles.size();i++){
@@ -487,4 +605,72 @@ public:
         if(min_t<0.0) return -1.0;
         return min_t;
     }
+
+    virtual Vector getNormal(Point point, Vector lightVector){
+        for(int i=0;i<triangles.size();i++){
+            // check if point is on a triangle
+            if(triangles[i].contains(point)){
+                return triangles[i].getNormal(point, lightVector);
+                // cout << "point is on triangle " << i << endl;
+                // if(triangles[i].points[0].x==triangles[i].points[1].x){
+                //     if(triangles[i].points[0].x>bottom_left.x){
+                //         return Vector(-1, 0, 0);
+                //     }    
+                //     else return Vector(1, 0, 0);
+                // }
+                // else if(triangles[i].points[0].y==triangles[i].points[1].y){
+                //     if(triangles[i].points[0].y>bottom_left.y){
+                //         return Vector(0, -1, 0);
+                //     }    
+                //     else return Vector(0, 1, 0);
+                // }
+                // else if(triangles[i].points[0].z==triangles[i].points[1].z){
+                //     if(triangles[i].points[0].z>bottom_left.z){
+                //         return Vector(0, 0, -1);
+                //     }    
+                //     else return Vector(0, 0, 1);
+                // }
+            }
+        }   
+        return Vector();    
+    }
 };
+
+// class Floor: public Object{
+// public:
+//     double checkerBoardWidth;
+//     Floor(){
+
+//     }
+//     Floor(double width, double ){
+//         this->checkerBoardWidth = width;
+//     }
+//     virtual Vector getNormal(Point point){
+//         Vector normal = Vector(0, 1, 0);
+//         return normal;
+//     }
+
+//     virtual double findIntersection(Ray ray){
+//         double t = -ray.origin.y/ray.direction.y;
+//         if(t<0.0) return -1.0;
+//         return t;
+//     }
+
+//     void draw(){
+//         int in = 0, jn = 0;
+//         for(double i = -1000; i<1000; i+=checkerBoardWidth){
+//             jn = in;
+//             for(double j=-1000; j<1000; j+=checkerBoardWidth){
+//                 glColor3d(jn&1, jn&1, jn&1);
+//                 glBegin(GL_QUADS);
+//                     glVertex3f(i,0,j);
+//                     glVertex3f(i,0,j+checkerBoardWidth);
+//                     glVertex3f(i+checkerBoardWidth,0,j+checkerBoardWidth);
+//                     glVertex3f(i+checkerBoardWidth,0,j);
+//                 glEnd();
+//                 jn++;
+//             }
+//             in++;
+//         }
+//     }
+// };
