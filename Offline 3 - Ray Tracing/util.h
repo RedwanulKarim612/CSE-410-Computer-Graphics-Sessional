@@ -237,9 +237,7 @@ public:
     }
 
     virtual double intersection(Ray ray, double (&color)[3], int depth, vector<Object*>objects, vector<Light *>lights){
-        if(depth==-1)cout << depth << endl;
         double t = findIntersection(ray);
-        if(depth==-1) return t;
         double lambert = 0, phong = 0;
         if(t<0.0) return -1.0;
         // cout << t << endl;
@@ -269,12 +267,11 @@ public:
             double distanceFromLight = intersectionPoint.distance(lights[i]->position);
             Vector normal = getNormal(intersectionPoint, lightVector);
             normal.normalize();
-            lambert = -lightVector.dotProduct(normal)*pow(2.718281828, - distanceFromLight*distanceFromLight*lights[i]->fallOff);
+            lambert = lightVector.dotProduct(normal)*pow(2.718281828, - distanceFromLight*distanceFromLight*lights[i]->fallOff);
             if(lambert<0.0) lambert = 0.0;
             for(int j=0;j<3;j++){
                 color[j] += colorAtIntersection[j]*diffuseCoeff*lambert*lights[i]->color[j];
             }
-            // lightVector = -lightVector;
             Vector reflectionVector = lightVector - normal*(2.0*(lightVector).dotProduct(normal));
             reflectionVector.normalize();
             phong = reflectionVector.dotProduct(ray.direction);
@@ -287,20 +284,22 @@ public:
         for(int i=0;i<3;i++){
             color[i] = min(max(color[i],0.0), 1.0);
         }
+        if(depth==0) return t;
         Vector normal = getNormal(intersectionPoint, -ray.direction);
         Vector reflectionVector = ray.direction - normal*(2.0*ray.direction.dotProduct(normal));
         reflectionVector.normalize();
-        Ray reflectedRay = Ray(reflectionVector*0.1+intersectionPoint, reflectionVector);
+        Ray reflectedRay = Ray(reflectionVector*0.001+intersectionPoint, reflectionVector);
         double t2 = -1, t_min = -1, obj_in = -1;
         for(int i=0;i<objects.size();i++){
             t2 = objects[i]->findIntersection(reflectedRay);
+            // t2 = objects[i]->intersection(reflectedRay, color, 0, objects, lights);
             if(t2<0.0) continue;
             if(t_min<0.0 || t2<t_min) {
                 t_min = t2;
                 obj_in = i;
             }
         }
-        if(t2<0.0) return t;
+        if(t_min<0.0) return t;
         double color2[3] = {0,0,0};
         t2 = objects[obj_in]->intersection(reflectedRay, color2, depth-1, objects, lights);
         for(int i=0;i<3;i++){
@@ -501,6 +500,7 @@ public:
     virtual Vector getNormal(Point point, Vector lightVector){
         Vector normal = Vector(center, point);
         normal.normalize();
+        if(normal.dotProduct(lightVector)<0.0) normal = -normal;
         return normal;
     }
 };
