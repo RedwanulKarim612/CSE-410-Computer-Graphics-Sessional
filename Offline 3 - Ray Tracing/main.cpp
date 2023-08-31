@@ -17,7 +17,6 @@ double recursionLevel, pixels;
 double checkerBoardWidth;
 double checkerBoardAmbientCoeff, checkerBoardDiffuseCoeff, checkerBoardReflectionCoeff;
 bitmap_image image;
-
 void captureImage(){
     for(int i=0;i<pixels; i++){
         for(int j=0;j<pixels;j++){
@@ -79,26 +78,6 @@ void drawAxes() {
     glEnd();
 }
 
-// draw a checkerboard on the xz plane with each cell with given width
-void drawCheckerBoard(){
-    int in = 0, jn = 0;
-    for(double i = -1000; i<1000; i+=checkerBoardWidth){
-        jn = in;
-        for(double j=-1000; j<1000; j+=checkerBoardWidth){
-            glColor3d(jn&1, jn&1, jn&1);
-            glBegin(GL_QUADS);
-                glVertex3f(i,0,j);
-                glVertex3f(i,0,j+checkerBoardWidth);
-                glVertex3f(i+checkerBoardWidth,0,j+checkerBoardWidth);
-                glVertex3f(i+checkerBoardWidth,0,j);
-            glEnd();
-            jn++;
-        }
-        in++;
-    }
-}
-
-
 
 void display() {
     // glClear(GL_COLOR_BUFFER_BIT);            // Clear the color buffer (background)
@@ -121,6 +100,7 @@ void display() {
     // drawCheckerBoard();
     // cout << objects.size() << endl;
     for(int i=0;i<objects.size();i++){
+        if(objects[i]->isFloor) objects[i]->curPosition = pos;
         objects[i]->draw();
     }
     for(int i=0;i<lights.size();i++){

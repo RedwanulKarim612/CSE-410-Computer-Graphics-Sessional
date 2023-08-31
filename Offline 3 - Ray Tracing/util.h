@@ -237,6 +237,8 @@ public:
     double color[3];
     double ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff;
     double shininess;
+    bool isFloor = false;
+    Point curPosition;
     Object(){
         this->color[0] = 0;
         this->color[1] = 0;
@@ -673,28 +675,8 @@ public:
 
     virtual Vector getNormal(Point point, Vector lightVector){
         for(int i=0;i<triangles.size();i++){
-            // check if point is on a triangle
             if(triangles[i].contains(point)){
                 return triangles[i].getNormal(point, lightVector);
-                // cout << "point is on triangle " << i << endl;
-                // if(triangles[i].points[0].x==triangles[i].points[1].x){
-                //     if(triangles[i].points[0].x>bottom_left.x){
-                //         return Vector(-1, 0, 0);
-                //     }    
-                //     else return Vector(1, 0, 0);
-                // }
-                // else if(triangles[i].points[0].y==triangles[i].points[1].y){
-                //     if(triangles[i].points[0].y>bottom_left.y){
-                //         return Vector(0, -1, 0);
-                //     }    
-                //     else return Vector(0, 1, 0);
-                // }
-                // else if(triangles[i].points[0].z==triangles[i].points[1].z){
-                //     if(triangles[i].points[0].z>bottom_left.z){
-                //         return Vector(0, 0, -1);
-                //     }    
-                //     else return Vector(0, 0, 1);
-                // }
             }
         }   
         return Vector();    
@@ -704,16 +686,23 @@ public:
 class Floor: public Object{
 public:
     double checkerBoardWidth;
+    int prevCellX;
+    int prevCellY;
     Floor(){
         checkerBoardWidth = 25.0;
+        isFloor = true;
     }
     
     Floor(double checkerBoardWidth, double color[3], double ambientCoeff, double diffuseCoeff, double specularCoeff, double reflectionCoeff, double shininess): Object(color, ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff, shininess){
         this->checkerBoardWidth = checkerBoardWidth;
+        prevCellX = (int)((curPosition.x+2000)/checkerBoardWidth);
+        prevCellY = (int)((curPosition.z+2000)/checkerBoardWidth);
+        isFloor = true;
     }
 
     Floor(double checkerBoardWidth, double color[3]): Object(color, 0.4, 0.4, 0.2, 0.0, 0.0){
         this->checkerBoardWidth = checkerBoardWidth;
+        isFloor = true;
     }
 
     virtual Vector getNormal(Point point, Vector lightVector){
@@ -742,19 +731,35 @@ public:
 
     void draw(){
         int in = 0, jn = 0;
-        for(double i = -1000; i<1000; i+=checkerBoardWidth){
+        int cellX = (int)((curPosition.x+2000)/checkerBoardWidth);
+        int cellY = (int)((curPosition.z+2000)/checkerBoardWidth);
+        double xin = cellX*checkerBoardWidth;
+        double yin = cellY*checkerBoardWidth;
+        for(double i = -2000; i<2000.0; i+=checkerBoardWidth){
             jn = in;
-            for(double j=-1000; j<1000; j+=checkerBoardWidth){
+            for(double j=-2000; j<2000; j+=checkerBoardWidth){
                 glColor3d(jn&1, jn&1, jn&1);
-                glBegin(GL_QUADS);
+                glPushMatrix();
+                    // if((cellX+cellY)%2==0)
+                    int movX=cellX-prevCellX, movY=cellY-prevCellY;
+                    if(cellX%2!=prevCellX%2) movX=cellX-prevCellX-1;
+                    if(cellY%2!=prevCellY%2) movY=cellY-prevCellY-1;
+                    if(movX!=0 || movY!=0) {
+                        // cout << "shift\n";
+                        glTranslatef(movX*checkerBoardWidth, 0, movY*checkerBoardWidth);
+                    }
+                    glBegin(GL_QUADS);
                     glVertex3f(i,0,j);
                     glVertex3f(i,0,j+checkerBoardWidth);
                     glVertex3f(i+checkerBoardWidth,0,j+checkerBoardWidth);
                     glVertex3f(i+checkerBoardWidth,0,j);
-                glEnd();
+                    glEnd();    
+                glPopMatrix();
                 jn++;
             }
             in++;
         }
+        // prevCellX = cellX;
+        // prevCellY = cellY;
     }
 };
