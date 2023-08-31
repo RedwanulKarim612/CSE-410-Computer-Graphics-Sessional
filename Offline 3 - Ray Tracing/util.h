@@ -170,12 +170,16 @@ public:
     Point position;
     double fallOff;
     double color[3];
+    double cutOffAngle; // in degreees
+    Vector direction;
     Light(){
         this->position = Point();
         this->fallOff = 0;
         for(int i=0;i<3;i++){
             this->color[i] = 1.0;
         }   
+        cutOffAngle = 365.0;
+        direction = Vector(1.0,0,0);
     }
     Light(Point position, double fallOff){
         this->position = position;
@@ -183,7 +187,18 @@ public:
         for(int i=0;i<3;i++){
             this->color[i] = 1.0;
         }
-        // color[0]=0.0;
+        cutOffAngle = 365.0;
+        direction = Vector(1.0,0,0);
+    }
+    Light(Point position, double fallOff, double cutOffAngle, Point target){
+        this->position = position;
+        this->fallOff = fallOff;
+        for(int i=0;i<3;i++){
+            this->color[i] = 1.0;
+        }
+        this->cutOffAngle = cutOffAngle;
+        this->direction = Vector(this->position, target);
+        this->direction.normalize();
     }
 
     void draw(){
@@ -195,7 +210,25 @@ public:
             glTranslatef(position.x, position.y, position.z);
             glutSolidSphere(2.5, 30, 30);
         glPopMatrix();
+        if(cutOffAngle<360.0) {
+            // cout << "drawing spotlight\n";
+            // cout << direction << endl;
+            glLineWidth(10.0);
+            glColor3d(1,1,1);
+            glBegin(GL_LINES);
+            glVertex3f(position.x,position.y,position.z);
+            Point t = direction*100 + position;
+            glVertex3f(t.x, t.y, t.z);
+            glEnd();
+        }
     }    
+
+    bool inSideCutoffRegion(Vector outgoingRay){
+        if(cutOffAngle>360.0) return true;
+        double theta = direction.dotProduct(outgoingRay)*180/M_PI;
+        if(theta>cutOffAngle) return true;
+        return false;
+    }
 };
 
 
@@ -250,6 +283,8 @@ public:
         for(int i=0;i<lights.size();i++){
             Vector lightVector = Vector(intersectionPoint, lights[i]->position);
             lightVector.normalize();
+            if(!lights[i]->inSideCutoffRegion(-lightVector)) {continue;}
+            // if(lights[i]->cutOffAngle<360.0) cout << "in spotlight\n";
             Ray shadowRay(lightVector*0.001 + intersectionPoint, lightVector);
             double tToLight = (lights[i]->position.x - intersectionPoint.x)/shadowRay.direction.x;
             bool inShadow = false;

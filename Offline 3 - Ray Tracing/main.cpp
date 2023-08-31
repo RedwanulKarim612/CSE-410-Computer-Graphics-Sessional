@@ -222,6 +222,18 @@ void keyboardListener(unsigned char key, int xx,int yy){
             captureImage();
             cout << "image captured\n";
             break;
+        case 'R':
+            if(lights.size()>0){
+                lights[0]->color[0] = 1.0;
+                lights[0]->color[1] = 0.0;
+                lights[0]->color[2] = 0.0;
+            }
+        case 'Y':
+            if(lights.size()>1){
+                lights[1]->color[0] = 1.0;
+                lights[1]->color[1] = 1.0;
+                lights[1]->color[2] = 0.0;
+            }
 		default:
 			break;
 	}
@@ -274,7 +286,7 @@ void specialKeyListener(int key, int x,int y)
 
 
 int main(int argc, char** argv){
-    pos.x=-150;pos.y=40;pos.z=0;
+    pos.x=-200;pos.y=40;pos.z=0;
     u = Vector(0,1,0);
     r = Vector(0,0,1);
     l = Vector(1,0,0);
@@ -322,8 +334,9 @@ int main(int argc, char** argv){
             desFile >> width >> height;
             desFile >> color[0] >> color[1] >> color[2];
             desFile >> ambientCoeff >> diffuseCoeff >> specularCoeff >> reflectionCoeff >> shininess;
-            lowest_point.x = lowest_point.x - width/2;
-            lowest_point.z = lowest_point.z - width/2;
+            lowest_point.x = lowest_point.x - width/2.0;
+            lowest_point.z = lowest_point.z + width/2.0;
+            cout << lowest_point << endl;
             Object *o = new Pyramid(lowest_point, width, height, color, ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff, shininess);
             objects.push_back(o);
         }
@@ -350,6 +363,21 @@ int main(int argc, char** argv){
         desFile >> position.x >> position.z >> position.y;
         desFile >> fallOff;
         Light *l = new Light(position, fallOff);
+        lights.push_back(l);
+    }
+    int noOfSpotLights;
+    desFile >> noOfSpotLights;
+    while(noOfSpotLights--){
+        Point position;
+        Point target;
+        double fallOff;
+        double cutoffAngle;
+        desFile >> position.x >> position.z >> position.y;
+        desFile >> fallOff;
+        desFile >> target.x >> target.z >> target.y;
+        desFile >> cutoffAngle;
+
+        Light *l = new Light(position, fallOff, cutoffAngle, target);
         lights.push_back(l);
     }
     glutInit(&argc, argv);                      // Initialize GLUT
