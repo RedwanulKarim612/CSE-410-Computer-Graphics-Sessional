@@ -36,7 +36,7 @@ void captureImage(){
             rayDirection.normalize();
             Ray ray(pos, rayDirection);
             for(int k=0;k<objects.size();k++){
-                double color[3] = {1.0, 0.0, 0.0};
+                double color[3] = {0.0, 0.0, 0.0};
                 double t = objects[k]->intersection(ray, color, recursionLevel, objects, lights);
                 // double t = objects[k]->findIntersection(ray);
                 if(t<0.0) continue;
@@ -118,7 +118,7 @@ void display() {
               u.x,u.y,u.z);
     glMatrixMode(GL_MODELVIEW);
     drawAxes();
-    drawCheckerBoard();
+    // drawCheckerBoard();
     // cout << objects.size() << endl;
     for(int i=0;i<objects.size();i++){
         objects[i]->draw();
@@ -286,13 +286,15 @@ int main(int argc, char** argv){
     desFile >> checkerBoardWidth;
     desFile >> checkerBoardAmbientCoeff >> checkerBoardDiffuseCoeff >> checkerBoardReflectionCoeff;
     desFile >> numberOfObjects;
-    cout << numberOfObjects << endl;
     fovX = aspectRatio * fovY;
     screenWidth = 2*near*tan(fovX*M_PI/360.0);
     screenHeight = 2*near*tan(fovY*M_PI/360.0);
     image = bitmap_image(pixels, pixels);
-    double color[3];
-    // Floor floor(checkerBoardWidth, color, checkerBoardAmbientCoeff, checkerBoardDiffuseCoeff, 0.0, checkerBoardReflectionCoeff);
+    double floorColor[3];
+    Object *floor = new Floor(checkerBoardWidth,floorColor,checkerBoardAmbientCoeff,checkerBoardDiffuseCoeff,0.0,checkerBoardReflectionCoeff,30.0);
+    objects.push_back(floor);
+    // Floor floor = Floor(checkerBoardWidth, floorColor, checkerBoardAmbientCoeff, checkerBoardDiffuseCoeff, checkerBoardReflectionCoeff, 30);
+    
     while(numberOfObjects--){
         string type;
         desFile >> type;

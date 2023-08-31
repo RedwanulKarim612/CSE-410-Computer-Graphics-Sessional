@@ -232,19 +232,27 @@ public:
         return 0.0;
     }
 
+    virtual double* getColor(Point pt){
+        return this->color;
+    }
+
     virtual double intersection(Ray ray, double (&color)[3], int depth, vector<Object*>objects, vector<Light *>lights){
+        if(depth==-1)cout << depth << endl;
         double t = findIntersection(ray);
+        if(depth==-1) return t;
         double lambert = 0, phong = 0;
         if(t<0.0) return -1.0;
         // cout << t << endl;
         Point intersectionPoint = ray.direction*t + ray.origin;
+        double * colorAtIntersection;
+        colorAtIntersection = this->getColor(intersectionPoint);
         for(int i=0;i<3;i++){
-            color[i] = this->color[i]*ambientCoeff;
+            color[i] += colorAtIntersection[i]*ambientCoeff;
         }    
         for(int i=0;i<lights.size();i++){
             Vector lightVector = Vector(intersectionPoint, lights[i]->position);
             lightVector.normalize();
-            Ray shadowRay(lightVector*0.1 + intersectionPoint, lightVector);
+            Ray shadowRay(lightVector*0.001 + intersectionPoint, lightVector);
             double tToLight = (lights[i]->position.x - intersectionPoint.x)/shadowRay.direction.x;
             bool inShadow = false;
             for(int j=0;j<objects.size();j++){
@@ -261,32 +269,31 @@ public:
             double distanceFromLight = intersectionPoint.distance(lights[i]->position);
             Vector normal = getNormal(intersectionPoint, lightVector);
             normal.normalize();
-            lambert = lightVector.dotProduct(normal)*pow(2.718281828, - distanceFromLight*distanceFromLight*lights[i]->fallOff);
+            lambert = -lightVector.dotProduct(normal)*pow(2.718281828, - distanceFromLight*distanceFromLight*lights[i]->fallOff);
             if(lambert<0.0) lambert = 0.0;
             for(int j=0;j<3;j++){
-                color[j] += this->color[j]*diffuseCoeff*lambert*lights[i]->color[j];
+                color[j] += colorAtIntersection[j]*diffuseCoeff*lambert*lights[i]->color[j];
             }
-            lightVector = -lightVector;
-            Vector reflectionVector = lightVector - normal*(2.0*lightVector.dotProduct(normal));
+            // lightVector = -lightVector;
+            Vector reflectionVector = lightVector - normal*(2.0*(lightVector).dotProduct(normal));
             reflectionVector.normalize();
-            phong = -reflectionVector.dotProduct(ray.direction);
+            phong = reflectionVector.dotProduct(ray.direction);
             if(phong<0.0) phong = 0.0;
             phong = pow(phong, shininess);
             for(int j=0;j<3;j++){
-                color[j] += this->color[j]*specularCoeff*phong*lights[i]->color[j];
+                color[j] += colorAtIntersection[j]*specularCoeff*phong*lights[i]->color[j];
             }
         }
         for(int i=0;i<3;i++){
             color[i] = min(max(color[i],0.0), 1.0);
         }
-        if(depth==0) return t;
         Vector normal = getNormal(intersectionPoint, -ray.direction);
-        Vector reflectionVector = -ray.direction - normal*(2.0*ray.direction.dotProduct(normal));
+        Vector reflectionVector = ray.direction - normal*(2.0*ray.direction.dotProduct(normal));
         reflectionVector.normalize();
-        Ray reflectedRay = Ray(reflectionVector*0.001+intersectionPoint, reflectionVector);
+        Ray reflectedRay = Ray(reflectionVector*0.1+intersectionPoint, reflectionVector);
         double t2 = -1, t_min = -1, obj_in = -1;
         for(int i=0;i<objects.size();i++){
-            t2 = objects[i]->intersection(reflectedRay, color, 0, objects, lights);
+            t2 = objects[i]->findIntersection(reflectedRay);
             if(t2<0.0) continue;
             if(t_min<0.0 || t2<t_min) {
                 t_min = t2;
@@ -413,15 +420,36 @@ public:
     }
 
     bool contains(Point point){
-        Vector ac = Vector(points[0], points[2]);
-        Vector ab = Vector(points[0], points[1]);
-        Vector normal = ac*ab;
-        normal.normalize();
-        Vector p0 = Vector(points[0]);
-        double D = -normal.dotProduct(p0);
-        Vector p = Vector(points[0], point);
-        double t = normal.dotProduct(p) + D;
-        return t>0.0;
+        Matrix A(3,3);
+        A.setVal(0,0,points[0].x);
+        A.setVal(1,0,points[0].y);
+        A.setVal(2,0,points[0].z);
+        A.setVal(0,1,points[1].x);
+        A.setVal(1,1,points[1].y);
+        A.setVal(2,1,points[1].z);
+        A.setVal(0,2,points[2].x);
+        A.setVal(1,2,points[2].y);
+        A.setVal(2,2,points[2].z);
+        Matrix alphaM = A;
+        alphaM.setVal(0,0,point.x);
+        alphaM.setVal(1,0,point.y);
+        alphaM.setVal(2,0,point.z);
+        double alpha = alphaM.determinant()/A.determinant();
+        if(alpha<0.0 || alpha>1.0) return false;
+        Matrix betaM = A;
+        betaM.setVal(0,1,point.x);
+        betaM.setVal(1,1,point.y);
+        betaM.setVal(2,1,point.z);
+        double beta = betaM.determinant()/A.determinant();
+        if(beta<0.0 || beta>1.0) return false;
+        Matrix gammaM = A;
+        gammaM.setVal(0,2,point.x);
+        gammaM.setVal(1,2,point.y);
+        gammaM.setVal(2,2,point.z);
+        double gamma = gammaM.determinant()/A.determinant();
+        if(gamma<0.0 || gamma>1.0) return false;
+        if(abs(alpha+beta+gamma-1.0)>0.0001) return false;
+        return true;
     }
 
     Vector getNormal(Point point, Vector lightVector){
@@ -523,25 +551,6 @@ public:
                 glVertex3f(lowest_point.x - width/2, lowest_point.y, lowest_point.z - width/2);
                 glVertex3f(lowest_point.x - width/2, lowest_point.y, lowest_point.z + width/2);
             glEnd();
-            // glBegin(GL_TRIANGLES);
-            //     glVertex3f(lowest_point.x + width/2, lowest_point.y, lowest_point.z + width/2);
-            //     glVertex3f(lowest_point.x + width/2, lowest_point.y, lowest_point.z - width/2);
-            //     glVertex3f(lowest_point.x, lowest_point.y + height, lowest_point.z);
-            // glEnd();
-            // glBegin(GL_TRIANGLES);
-            //     glVertex3f(lowest_point.x + width/2, lowest_point.y, lowest_point.z - width/2);
-            //     glVertex3f(lowest_point.x - width/2, lowest_point.y, lowest_point.z - width/2);
-            //     glVertex3f(lowest_point.x, lowest_point.y + height, lowest_point.z);
-            // glEnd();
-            // glBegin(GL_TRIANGLES);
-            //     glVertex3f(lowest_point.x - width/2, lowest_point.y, lowest_point.z - width/2);
-            //     glVertex3f(lowest_point.x - width/2, lowest_point.y, lowest_point.z + width/2);
-            //     glVertex3f(lowest_point.x, lowest_point.y + height, lowest_point.z);
-            // glEnd();
-            // glBegin(GL_TRIANGLES);
-            //     glVertex3f(lowest_point.x - width/2, lowest_point.y, lowest_point.z + width/2);
-            //     glVertex3f(lowest_point.x + width/2, lowest_point.y, lowest_point.z + width/2);
-            //     glVertex3f(lowest_point.x, lowest_point.y + height, lowest_point.z);
             glEnd();
         glPopMatrix();
     }
@@ -657,41 +666,60 @@ public:
     }
 };
 
-// class Floor: public Object{
-// public:
-//     double checkerBoardWidth;
-//     Floor(){
+class Floor: public Object{
+public:
+    double checkerBoardWidth;
+    Floor(){
+        checkerBoardWidth = 25.0;
+    }
+    
+    Floor(double checkerBoardWidth, double color[3], double ambientCoeff, double diffuseCoeff, double specularCoeff, double reflectionCoeff, double shininess): Object(color, ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff, shininess){
+        this->checkerBoardWidth = checkerBoardWidth;
+    }
 
-//     }
-//     Floor(double width, double ){
-//         this->checkerBoardWidth = width;
-//     }
-//     virtual Vector getNormal(Point point){
-//         Vector normal = Vector(0, 1, 0);
-//         return normal;
-//     }
+    Floor(double checkerBoardWidth, double color[3]): Object(color, 0.4, 0.4, 0.2, 0.0, 0.0){
+        this->checkerBoardWidth = checkerBoardWidth;
+    }
 
-//     virtual double findIntersection(Ray ray){
-//         double t = -ray.origin.y/ray.direction.y;
-//         if(t<0.0) return -1.0;
-//         return t;
-//     }
+    virtual Vector getNormal(Point point, Vector lightVector){
+        if(lightVector.y>0.0) return Vector(0, 1, 0);
+        else return Vector(0, -1, 0);
+    }
 
-//     void draw(){
-//         int in = 0, jn = 0;
-//         for(double i = -1000; i<1000; i+=checkerBoardWidth){
-//             jn = in;
-//             for(double j=-1000; j<1000; j+=checkerBoardWidth){
-//                 glColor3d(jn&1, jn&1, jn&1);
-//                 glBegin(GL_QUADS);
-//                     glVertex3f(i,0,j);
-//                     glVertex3f(i,0,j+checkerBoardWidth);
-//                     glVertex3f(i+checkerBoardWidth,0,j+checkerBoardWidth);
-//                     glVertex3f(i+checkerBoardWidth,0,j);
-//                 glEnd();
-//                 jn++;
-//             }
-//             in++;
-//         }
-//     }
-// };
+    virtual double findIntersection(Ray ray){
+        double t = -ray.origin.y/ray.direction.y;
+        if(t<0.0) return -1.0;
+        return t;
+    }
+
+    virtual double* getColor(Point pt){
+        int i = (int)((pt.x+1000)/checkerBoardWidth);
+        int j = (int)((pt.z+1000)/checkerBoardWidth);
+        double *white = new double[3];
+        double *black = new double[3];
+        for(int i=0;i<3;i++){
+            white[i] = 1.0;
+            black[i] = 0.0;
+        }
+        if((i+j)%2==0) return black;
+        return white;
+    }
+
+    void draw(){
+        int in = 0, jn = 0;
+        for(double i = -1000; i<1000; i+=checkerBoardWidth){
+            jn = in;
+            for(double j=-1000; j<1000; j+=checkerBoardWidth){
+                glColor3d(jn&1, jn&1, jn&1);
+                glBegin(GL_QUADS);
+                    glVertex3f(i,0,j);
+                    glVertex3f(i,0,j+checkerBoardWidth);
+                    glVertex3f(i+checkerBoardWidth,0,j+checkerBoardWidth);
+                    glVertex3f(i+checkerBoardWidth,0,j);
+                glEnd();
+                jn++;
+            }
+            in++;
+        }
+    }
+};
