@@ -202,22 +202,17 @@ public:
     }
 
     void draw(){
-        // cout << "drawing light\n";
-        // cout << "position: " << position << endl;
-        // cout << "fallOff: " << fallOff << endl;
         glColor3f(color[0], color[1], color[2]);
         glPushMatrix();
             glTranslatef(position.x, position.y, position.z);
             glutSolidSphere(2.5, 30, 30);
         glPopMatrix();
         if(cutOffAngle<360.0) {
-            // cout << "drawing spotlight\n";
-            // cout << direction << endl;
             glLineWidth(10.0);
             glColor3d(1,1,1);
             glBegin(GL_LINES);
             glVertex3f(position.x,position.y,position.z);
-            Point t = direction*100 + position;
+            Point t = -direction*15 + position;
             glVertex3f(t.x, t.y, t.z);
             glEnd();
         }
@@ -271,23 +266,22 @@ public:
         return this->color;
     }
 
-    virtual double intersection(Ray ray, double (&color)[3], int depth, vector<Object*>objects, vector<Light *>lights){
+    virtual double illuminate(Ray ray, double (&color)[3], int depth, vector<Object*>objects, vector<Light *>lights){
         double t = findIntersection(ray);
-        double lambert = 0, phong = 0;
         if(t<0.0) return -1.0;
-        // cout << t << endl;
         Point intersectionPoint = ray.direction*t + ray.origin;
         double * colorAtIntersection;
         colorAtIntersection = this->getColor(intersectionPoint);
         for(int i=0;i<3;i++){
             color[i] += colorAtIntersection[i]*ambientCoeff;
         }    
+        double lambert = 0, phong = 0;
         for(int i=0;i<lights.size();i++){
             Vector lightVector = Vector(intersectionPoint, lights[i]->position);
             lightVector.normalize();
             if(!lights[i]->inSideCutoffRegion(-lightVector)) {continue;}
             // if(lights[i]->cutOffAngle<360.0) cout << "in spotlight\n";
-            Ray shadowRay(lightVector*0.001 + intersectionPoint, lightVector);
+            Ray shadowRay(lightVector*0.000001 + intersectionPoint, lightVector);
             double tToLight = (lights[i]->position.x - intersectionPoint.x)/shadowRay.direction.x;
             bool inShadow = false;
             for(int j=0;j<objects.size();j++){
@@ -304,16 +298,14 @@ public:
             double distanceFromLight = intersectionPoint.distance(lights[i]->position);
             Vector normal = getNormal(intersectionPoint, lightVector);
             normal.normalize();
-            lambert = lightVector.dotProduct(normal)*pow(2.718281828, - distanceFromLight*distanceFromLight*lights[i]->fallOff);
+            lambert = max(0.0,lightVector.dotProduct(normal)*pow(2.718281828, - distanceFromLight*distanceFromLight*lights[i]->fallOff));
             if(lambert<0.0) lambert = 0.0;
             for(int j=0;j<3;j++){
                 color[j] += colorAtIntersection[j]*diffuseCoeff*lambert*lights[i]->color[j];
             }
             Vector reflectionVector = lightVector - normal*(2.0*(lightVector).dotProduct(normal));
             reflectionVector.normalize();
-            phong = reflectionVector.dotProduct(ray.direction);
-            if(phong<0.0) phong = 0.0;
-            phong = pow(phong, shininess);
+            phong = pow(max(0.0,reflectionVector.dotProduct(ray.direction)), shininess)*pow(2.718281828, - distanceFromLight*distanceFromLight*lights[i]->fallOff);
             for(int j=0;j<3;j++){
                 color[j] += colorAtIntersection[j]*specularCoeff*phong*lights[i]->color[j];
             }
@@ -325,11 +317,10 @@ public:
         Vector normal = getNormal(intersectionPoint, -ray.direction);
         Vector reflectionVector = ray.direction - normal*(2.0*ray.direction.dotProduct(normal));
         reflectionVector.normalize();
-        Ray reflectedRay = Ray(reflectionVector*0.001+intersectionPoint, reflectionVector);
+        Ray reflectedRay = Ray(reflectionVector*0.000001+intersectionPoint, reflectionVector);
         double t2 = -1, t_min = -1, obj_in = -1;
         for(int i=0;i<objects.size();i++){
             t2 = objects[i]->findIntersection(reflectedRay);
-            // t2 = objects[i]->intersection(reflectedRay, color, 0, objects, lights);
             if(t2<0.0) continue;
             if(t_min<0.0 || t2<t_min) {
                 t_min = t2;
@@ -338,7 +329,7 @@ public:
         }
         if(t_min<0.0) return t;
         double color2[3] = {0,0,0};
-        t2 = objects[obj_in]->intersection(reflectedRay, color2, depth-1, objects, lights);
+        t2 = objects[obj_in]->illuminate(reflectedRay, color2, depth-1, objects, lights);
         for(int i=0;i<3;i++){
             color[i] += color2[i]*reflectionCoeff;
         }
@@ -510,9 +501,6 @@ public:
         this->radius = radius;
     }
     virtual void draw(){
-        // cout << "drawing sphere\n";
-        // cout << "center: " << center << endl;
-        // cout << "radius: " << radius << endl;
         glColor3f(color[0], color[1], color[2]);
         glPushMatrix();
             glTranslatef(center.x, center.y, center.z);
@@ -572,16 +560,10 @@ public:
     }
 
     void draw(){
-        // cout << "drawing pyramid\n";
-        // cout << "lowest point: " << lowest_point << endl;
-        // cout << "width: " << width << endl;
-        // cout << "height: " << height << endl;
         glColor3f(color[0], color[1], color[2]);
-        
         for(int i=0;i<triangles.size();i++)
             triangles[i].draw();    
         glPushMatrix();
-            // glTranslatef(lowest_point.x, lowest_point.y, lowest_point.z);
             glBegin(GL_QUADS);
                 glVertex3f(lowest_point.x + width/2, lowest_point.y, lowest_point.z + width/2);
                 glVertex3f(lowest_point.x + width/2, lowest_point.y, lowest_point.z - width/2);
@@ -651,13 +633,10 @@ public:
     }
 
     void draw(){
-        // cout << "drawing cube\n";
-        // cout << "bottom left: " << bottom_left << endl;
-        // cout << "side: " << side << endl;
         glColor3f(color[0], color[1], color[2]);
         glPushMatrix();
-            glTranslatef(bottom_left.x+this->side/2.0, bottom_left.y+this->side/2.0, bottom_left.z+this->side/2.0);
-            glutSolidCube(side);
+            for(int i=0;i<triangles.size();i++)
+                triangles[i].draw();
         glPopMatrix();
     }
 

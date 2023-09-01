@@ -25,6 +25,7 @@ void captureImage(){
     }
     double dx = screenWidth*1.0/pixels;
     double dy = screenHeight*1.0/pixels;
+    // cout << dx << " " << dy << endl;
     Point midPoint = l*near + pos;
     Point topLeft = (u*(screenHeight/2.0)) - (r*(screenWidth/2.0)) + midPoint;
     for(int i=0;i<pixels;i++){
@@ -36,16 +37,14 @@ void captureImage(){
             Ray ray(pos, rayDirection);
             for(int k=0;k<objects.size();k++){
                 double color[3] = {0.0, 0.0, 0.0};
-                double t = objects[k]->intersection(ray, color, recursionLevel, objects, lights);
+                double t = objects[k]->illuminate(ray, color, recursionLevel, objects, lights);
                 // double t = objects[k]->findIntersection(ray);
                 if(t<0.0) continue;
                 if(t<min_t || min_t<0.0){
                     image.set_pixel(j, i, color[0]*255, color[1]*255, color[2]*255);
                     min_t = t;
-                    // cout << i << " " << j << endl;
                 }
             }
-            // cout << "min_t: " << min_t << endl;
         }
     }
     image.save_image("out.bmp");
@@ -207,12 +206,14 @@ void keyboardListener(unsigned char key, int xx,int yy){
                 lights[0]->color[0] = 1.0;
                 lights[0]->color[1] = 0.0;
                 lights[0]->color[2] = 0.0;
+                break;
             }
-        case 'Y':
+        case 'B':
             if(lights.size()>1){
-                lights[1]->color[0] = 1.0;
-                lights[1]->color[1] = 1.0;
-                lights[1]->color[2] = 0.0;
+                lights[1]->color[0] = 0.0;
+                lights[1]->color[1] = 0.0;
+                lights[1]->color[2] = 1.0;
+                break;
             }
 		default:
 			break;
@@ -266,12 +267,13 @@ void specialKeyListener(int key, int x,int y)
 
 
 int main(int argc, char** argv){
-    pos.x=-200;pos.y=40;pos.z=0;
+    pos.x=0;pos.y=40;pos.z=-200;
     u = Vector(0,1,0);
-    r = Vector(0,0,1);
-    l = Vector(1,0,0);
+    r = Vector(-1,0,0);
+    l = Vector(0,0,1);
 
     ifstream desFile("description.txt");
+    // ifstream desFile("test.txt");
     int numberOfObjects;
     desFile >> near >> far >> fovY >> aspectRatio;
     desFile >> recursionLevel >> pixels;
@@ -282,7 +284,7 @@ int main(int argc, char** argv){
     screenWidth = 2*near*tan(fovX*M_PI/360.0);
     screenHeight = 2*near*tan(fovY*M_PI/360.0);
     image = bitmap_image(pixels, pixels);
-    double floorColor[3];
+    double floorColor[3] = {0,0,0};
     Object *floor = new Floor(checkerBoardWidth,floorColor,checkerBoardAmbientCoeff,checkerBoardDiffuseCoeff,0.0,checkerBoardReflectionCoeff,30.0);
     objects.push_back(floor);
     // Floor floor = Floor(checkerBoardWidth, floorColor, checkerBoardAmbientCoeff, checkerBoardDiffuseCoeff, checkerBoardReflectionCoeff, 30);
@@ -297,6 +299,7 @@ int main(int argc, char** argv){
             double ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff;
             double shininess;
             desFile >> center.x >> center.z >> center.y;
+            center.x = -center.x;
             desFile >> radius;
             desFile >> color[0] >> color[1] >> color[2];
             desFile >> ambientCoeff >> diffuseCoeff >> specularCoeff >> reflectionCoeff >> shininess;
@@ -310,13 +313,12 @@ int main(int argc, char** argv){
             double ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff;
             double shininess;
             desFile >> lowest_point.x >> lowest_point.z >> lowest_point.y;
-            
+            lowest_point.x = -lowest_point.x;
             desFile >> width >> height;
             desFile >> color[0] >> color[1] >> color[2];
             desFile >> ambientCoeff >> diffuseCoeff >> specularCoeff >> reflectionCoeff >> shininess;
             lowest_point.x = lowest_point.x - width/2.0;
             lowest_point.z = lowest_point.z + width/2.0;
-            cout << lowest_point << endl;
             Object *o = new Pyramid(lowest_point, width, height, color, ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff, shininess);
             objects.push_back(o);
         }
@@ -328,6 +330,8 @@ int main(int argc, char** argv){
             double shininess;
             desFile >> bottom_lower_left.x >> bottom_lower_left.z >> bottom_lower_left.y;
             desFile >> side;
+            bottom_lower_left.x = -bottom_lower_left.x;
+            bottom_lower_left.x = bottom_lower_left.x - side;
             desFile >> color[0] >> color[1] >> color[2];
             desFile >> ambientCoeff >> diffuseCoeff >> specularCoeff >> reflectionCoeff >> shininess;
             Object *o = new Cube(bottom_lower_left, side, color, ambientCoeff, diffuseCoeff, specularCoeff, reflectionCoeff, shininess);
@@ -341,6 +345,7 @@ int main(int argc, char** argv){
         Point position;
         double fallOff;
         desFile >> position.x >> position.z >> position.y;
+        position.x = -position.x;
         desFile >> fallOff;
         Light *l = new Light(position, fallOff);
         lights.push_back(l);
@@ -353,8 +358,10 @@ int main(int argc, char** argv){
         double fallOff;
         double cutoffAngle;
         desFile >> position.x >> position.z >> position.y;
+        position.x = -position.x;
         desFile >> fallOff;
         desFile >> target.x >> target.z >> target.y;
+        target.x = -target.x;
         desFile >> cutoffAngle;
 
         Light *l = new Light(position, fallOff, cutoffAngle, target);
