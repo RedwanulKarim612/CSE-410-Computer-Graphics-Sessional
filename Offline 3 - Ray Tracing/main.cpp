@@ -37,7 +37,7 @@ void captureImage(){
             Ray ray(pos, rayDirection);
             for(int k=0;k<objects.size();k++){
                 double color[3] = {0.0, 0.0, 0.0};
-                double t = objects[k]->illuminate(ray, color, recursionLevel, objects, lights);
+                double t = objects[k]->illuminate(ray, color, recursionLevel, objects, lights, far-near);
                 // double t = objects[k]->findIntersection(ray);
                 if(t<0.0) continue;
                 if(t<min_t || min_t<0.0){
@@ -267,13 +267,16 @@ void specialKeyListener(int key, int x,int y)
 
 
 int main(int argc, char** argv){
-    pos.x=0;pos.y=40;pos.z=-200;
-    u = Vector(0,1,0);
-    r = Vector(-1,0,0);
-    l = Vector(0,0,1);
+    // pos = Point(31.4356, -108.588, -114.923); 
+    // u = Vector(0.353521, -0.759857, 0.545564);
+    // r = Vector(0.915634, 0.400432, -0.0356058);
+    // l = Vector(-0.191406, 0.512125, 0.837312);
 
+    pos = Point(0, -200, 40);
+    u = Vector(0, 0, 1);
+    r = Vector(1, 0, 0);
+    l = Vector(0, 1, 0);
     ifstream desFile("description.txt");
-    // ifstream desFile("test.txt");
     int numberOfObjects;
     desFile >> near >> far >> fovY >> aspectRatio;
     desFile >> recursionLevel >> pixels;
@@ -284,6 +287,14 @@ int main(int argc, char** argv){
     screenWidth = 2*near*tan(fovX*M_PI/360.0);
     screenHeight = 2*near*tan(fovY*M_PI/360.0);
     image = bitmap_image(pixels, pixels);
+    pos.x=-pos.x;
+    swap(pos.y, pos.z);
+    swap(u.y, u.z);
+    u.x = -u.x;
+    swap(r.y, r.z);
+    r.x = -r.x;
+    swap(l.y, l.z);
+    l.x = -l.x;
     double floorColor[3] = {0,0,0};
     Object *floor = new Floor(checkerBoardWidth,floorColor,checkerBoardAmbientCoeff,checkerBoardDiffuseCoeff,0.0,checkerBoardReflectionCoeff,30.0);
     objects.push_back(floor);
@@ -378,4 +389,7 @@ int main(int argc, char** argv){
     glutSpecialFunc(specialKeyListener);        // Register callback handler for special-key event
     initGL();  
     glutMainLoop();                             // Enter the event-processing loop
+    for(int i=0;i<objects.size();i++) delete(objects[i]);
+    for(int i=0;i<lights.size();i++) delete(lights[i]);
+    return 0;
 }

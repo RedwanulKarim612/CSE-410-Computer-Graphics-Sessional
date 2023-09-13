@@ -9,5 +9,5 @@ do
     diff -EZBwb ./Test_Cases/$i/stage1.txt ./stage1.txt
     diff -EZBwb ./Test_Cases/$i/stage2.txt ./stage2.txt
     diff -EZBwb ./Test_Cases/$i/stage3.txt ./stage3.txt
-    diff -EZBwb ./Test_Cases/$i/z_buffer.txt ./z-buffer.txt
+    diff -EZBwb ./Test_Cases/$i/z_buffer.txt ./z_buffer.txt
 done

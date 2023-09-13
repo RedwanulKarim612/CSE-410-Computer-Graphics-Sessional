@@ -220,8 +220,8 @@ public:
 
     bool inSideCutoffRegion(Vector outgoingRay){
         if(cutOffAngle>360.0) return true;
-        double theta = direction.dotProduct(outgoingRay)*180/M_PI;
-        if(theta>cutOffAngle) return true;
+        double theta = acos(direction.dotProduct(outgoingRay))*180/M_PI;
+        if(theta<cutOffAngle) return true;
         return false;
     }
 };
@@ -266,9 +266,10 @@ public:
         return this->color;
     }
 
-    virtual double illuminate(Ray ray, double (&color)[3], int depth, vector<Object*>objects, vector<Light *>lights){
+    virtual double illuminate(Ray ray, double (&color)[3], int depth, vector<Object*>objects, vector<Light *>lights, int distance_threshold){
         double t = findIntersection(ray);
         if(t<0.0) return -1.0;
+        if(t>distance_threshold) return -1.0;
         Point intersectionPoint = ray.direction*t + ray.origin;
         double * colorAtIntersection;
         colorAtIntersection = this->getColor(intersectionPoint);
@@ -329,7 +330,7 @@ public:
         }
         if(t_min<0.0) return t;
         double color2[3] = {0,0,0};
-        t2 = objects[obj_in]->illuminate(reflectedRay, color2, depth-1, objects, lights);
+        t2 = objects[obj_in]->illuminate(reflectedRay, color2, depth-1, objects, lights, distance_threshold);
         for(int i=0;i<3;i++){
             color[i] += color2[i]*reflectionCoeff;
         }

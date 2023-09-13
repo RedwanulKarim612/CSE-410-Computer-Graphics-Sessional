@@ -333,8 +333,8 @@ Point transformPoint(Matrix &transformation_matrix, Point &point){
 
 stack<Matrix>transformation_matrices;
 
-int main(int argc, char *argv[]){
-    ifstream fin(argv[1]);
+int main(){
+    ifstream fin("scene.txt");
     ofstream fout("stage1.txt");
     fout << setw(7) << fixed << setprecision(7);
     Point eye, look;
@@ -463,14 +463,9 @@ int main(int argc, char *argv[]){
     double dy = (top_limit - bottom_limit) / screen_height;
     double top_y = top_limit - dy/2;
     double left_x = left_limit + dx/2;
-    double z_buffer[screen_height][screen_width];
     double max_z = 1;
     double min_z = -1;
-    for(int i=0;i<screen_height;i++){
-        for(int j=0;j<screen_width;j++){
-            z_buffer[i][j] = max_z;
-        }
-    }
+    vector<vector<double> >z_buffer(screen_height, vector<double>(screen_width, max_z));
     bitmap_image image(screen_width, screen_height);
     for(int i=0;i<screen_height;i++){
         for(int j=0;j<screen_width;j++){
@@ -508,13 +503,11 @@ int main(int argc, char *argv[]){
                 double zs = triangles[t_i].points[j].getZ() + (ys - triangles[t_i].points[j].getY()) * 
                             (triangles[t_i].points[k].getZ() - triangles[t_i].points[j].getZ()) / 
                             (triangles[t_i].points[k].getY() - triangles[t_i].points[j].getY());
-                // cout << "SSSSSSS " << xs << endl;
                 if(xs >= -left_x) xs = -left_x;
                 else if(xs <= left_x) xs = left_x;
                 x_intersections.push_back(xs);  
                 z_intersections.push_back(zs);           
             }
-            // cout << x_intersections.size() << endl;
             if(x_intersections.size()!=2) continue;
             int right_scan_x_index = round((max(x_intersections[0], x_intersections[1]) - left_x) / dx);
             int left_scan_x_index = round((min(x_intersections[0], x_intersections[1]) - left_x) / dx);
@@ -525,15 +518,11 @@ int main(int argc, char *argv[]){
                             (x_intersections[1] - x_intersections[0]);
                 if(za < min_z) continue;
                 if(z_buffer[y_i][x_i] > za){
-                    // if(z_buffer[y_i][x_i]!=max_z && y_i==249)cout << t_i << " " << x_i << " " << z_buffer[y_i][x_i] << " " << za << endl;
                     z_buffer[y_i][x_i] = za;
                     image.set_pixel(x_i, y_i, triangles[t_i].color_RGB[0], triangles[t_i].color_RGB[1], triangles[t_i].color_RGB[2]);
                 }
             }
         }
-        // string suffix = argv[2];
-        // string file_name = "out-" + suffix + "-" + to_string(t_i) + ".bmp";
-        // image.save_image(file_name);
     }
     fout << setw(6) << fixed << setprecision(6);
 
@@ -547,9 +536,8 @@ int main(int argc, char *argv[]){
     }
     
 
-    string suffix = argv[2];
-    string file_name = "out-" + suffix + ".bmp";
+    string file_name = "out.bmp";
     image.save_image(file_name);
-
+    z_buffer.clear();
     return 0;
 }
